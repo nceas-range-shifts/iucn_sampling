@@ -129,6 +129,46 @@ quarto render reports/species_populations_report.qmd
 It uses `config$focal_year` and whichever taxa have outputs, so it works on the
 sample run as-is. The rendered HTML is git-ignored (regenerate as needed).
 
+## Data sources & citation
+
+The committed sample dataset under [`data/sample/`](data/sample/) is **synthetic**
+(see [`data/sample/README.md`](data/sample/README.md)) and must **not** be cited as
+real data.
+
+When you run the pipeline on **real** inputs, cite the sources you actually use.
+The pipeline is designed to consume:
+
+- **Species range maps — CDFW CWHR.** The original case study used the California
+  Wildlife Habitat Relationships (CWHR) System Species Distribution Maps. Per the
+  dataset's own metadata, cite as:
+
+  > California Department of Fish and Wildlife, California Interagency Wildlife
+  > Task Group. 2014. *California Wildlife Habitat Relationships (CWHR) System
+  > Species Distribution Maps*, CWHR version 9.0. Biogeographic Data Branch,
+  > Sacramento, CA. Accessed \<date\>.
+  > https://www.wildlife.ca.gov/Data/CWHR
+
+  (Each shapefile carries the species' scientific name in the `SName` field, which
+  Stage 0 reconciles to the GBIF canonical name.)
+
+- **Occurrence records — GBIF.** Every GBIF download issues its own DOI; cite that
+  specific download:
+
+  > GBIF.org (\<DD Month YYYY\>) *GBIF Occurrence Download*
+  > https://doi.org/10.15468/dl.\<XXXXXX\>
+
+- **Bird ranges — eBird Status & Trends.** Use the versioned citation shown on the
+  [eBird Status & Trends download page](https://science.ebird.org/en/status-and-trends)
+  (Fink et al., Cornell Lab of Ornithology; `https://doi.org/10.2173/ebirdst.<version>`),
+  matching the data version you downloaded.
+
+- **Conservation status — IUCN Red List** (optional):
+
+  > IUCN (\<YYYY\>). *The IUCN Red List of Threatened Species.* Version \<YYYY-N\>.
+  > https://www.iucnredlist.org
+
+Fill in the bracketed access dates, DOIs, and versions for your own run.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
