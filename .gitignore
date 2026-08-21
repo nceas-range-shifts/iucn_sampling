@@ -1,0 +1,57 @@
+# --- Secrets (NEVER commit) ---------------------------------------------------
+.Renviron
+.env
+*.yml
+api_credentials.*
+config/api_keys/*
+
+# --- Data & outputs -----------------------------------------------------------
+# The user's real inputs and all generated data/outputs stay local.
+# The small committed example set under data/sample/ is force-added below.
+data/raw/
+data/processed/
+output/
+
+# Large / binary geo + tabular formats
+*.rds
+*.gpkg
+*.tif
+*.ovr
+*.parquet
+*.zip
+# Shapefile sidecars
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+*.qpj
+
+# --- R ------------------------------------------------------------------------
+.Rhistory
+.RData
+.Ruserdata
+*.tmp
+.Rproj.user/
+/.quarto/
+
+# renv: keep the lockfile + settings, ignore the local library
+renv/library/
+renv/local/
+renv/cellar/
+renv/staging/
+
+# --- System -------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+
+# --- Quarto rendered artifacts ------------------------------------------------
+*_files/
+*.html
+
+# --- Keep the committed sample dataset despite the broad rules above ----------
+!data/sample/
+!data/sample/**
+
+# --- Keep empty scaffold dirs (so the layout ships) ---------------------------
+!**/.gitkeep

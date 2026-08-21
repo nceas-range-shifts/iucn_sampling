@@ -1,0 +1,23 @@
+# Copy this file to `.Renviron` (which is git-ignored) and fill in your own keys.
+#   file.copy(".Renviron.example", ".Renviron")   # then edit .Renviron
+# Restart R after editing so the values are picked up. Never commit `.Renviron`.
+#
+# Each data source below requires its own free registration. See README.md
+# ("Prerequisites") for the sign-up links. Steps that use these keys are marked
+# API-gated in docs/pipeline.md; the sample dataset runs without any of them.
+
+# --- GBIF (occurrence downloads) ----------------------------------------------
+# Register at https://www.gbif.org/user/profile
+GBIF_USER="your_gbif_username"
+GBIF_PWD="your_gbif_password"
+GBIF_EMAIL="you@example.org"
+
+# --- eBird Status & Trends ----------------------------------------------------
+# Request access at https://science.ebird.org/en/status-and-trends/download-data
+EBIRDST_KEY="your_ebirdst_access_key"
+# Where ebirdst caches its downloads (absolute path or ~ is fine):
+EBIRDST_DATA_DIR="~/ebirdst_data"
+
+# --- IUCN Red List (optional; only for get_redlist_status.R) ------------------
+# Request a token at https://apiv3.iucnredlist.org/api/v3/token
+IUCN_REDLIST_KEY="your_iucn_redlist_key"
