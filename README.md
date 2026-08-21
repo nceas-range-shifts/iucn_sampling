@@ -1,5 +1,7 @@
 # Species Populations Pipeline (template)
 
+[![License: MIT](https://img.shields.io/github/license/king0708/biodiversity-sampling-indicators)](LICENSE)
+
 A reusable R pipeline for building **species-population and sampling-priority
 indicators** from biodiversity data. Given a species list and their range
 shapefiles (plus, optionally, GBIF / eBird / IUCN access), it:
