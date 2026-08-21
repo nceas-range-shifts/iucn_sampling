@@ -1,0 +1,182 @@
+---
+title: "Species Populations: Sampling Priorities"
+subtitle: "Coverage targets and priority sampling areas"
+format:
+  html:
+    toc: true
+    embed-resources: true
+    theme: cosmo
+    fig-width: 8
+    fig-height: 6
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+library(here)
+knitr::opts_knit$set(root.dir = here::here())
+
+suppressPackageStartupMessages({
+  library(dplyr); library(readr); library(purrr); library(glue)
+  library(sf); library(terra); library(tidyterra)
+  library(ggplot2); library(viridisLite); library(scales); library(MASS); library(knitr)
+})
+
+# Config drives which year/taxa/CRS the report uses — the same config the
+# pipeline ran with. Edit config/config.R, not this document.
+source(here("config", "config.R"))
+source(here("config", "taxa_config.R"))
+source(here("config", "sampling_config.R"))
+source(here("R", "00_utils.R"))
+
+report_year <- config$focal_year
+
+# Which taxa actually have greedy outputs for this year?
+greedy_dir <- function(taxon) file.path(
+  taxon_output_dir(taxon), "sampling_optimized", as.character(report_year))
+have <- config$taxa[vapply(config$taxa,
+  function(t) file.exists(file.path(greedy_dir(t), "greedy_species_summary.csv")),
+  logical(1))]
+```
+
+```{r no-outputs, results='asis'}
+if (length(have) == 0) {
+  cat(glue(
+    "::: callout-warning\n",
+    "No pipeline outputs found for **{report_year}**. Run the pipeline first ",
+    "(e.g. `source('R/run_pipeline.R'); run_pipeline(sample = TRUE)`), then ",
+    "re-render this report.\n:::\n"))
+  knitr::knit_exit()
+}
+```
+
+This report summarises, for **`r report_year`**, how many species meet their
+range-sampling coverage target and where new sampling would do the most good.
+Targets and priorities come straight from the pipeline's sampling-optimization
+outputs.
+
+## Species meeting sampling targets
+
+A species "meets target" when at least `r scales::percent(sampling_params$target_sampling_frac)`
+of its range is sampled (or reachable by the proposed sampling plan).
+
+```{r targets-data}
+targets <- purrr::map_dfr(have, function(t) {
+  readr::read_csv(file.path(greedy_dir(t), "greedy_species_summary.csv"),
+                  show_col_types = FALSE) |>
+    dplyr::mutate(taxon = t)
+})
+
+by_taxon <- targets |>
+  dplyr::group_by(taxon) |>
+  dplyr::summarise(
+    n_species   = dplyr::n(),
+    n_at_target = sum(target_met, na.rm = TRUE),
+    pct_at_target = round(100 * mean(target_met, na.rm = TRUE), 1),
+    .groups = "drop")
+
+overall <- tibble::tibble(
+  taxon = "all taxa",
+  n_species = sum(by_taxon$n_species),
+  n_at_target = sum(by_taxon$n_at_target),
+  pct_at_target = round(100 * sum(by_taxon$n_at_target) / sum(by_taxon$n_species), 1))
+```
+
+```{r targets-table}
+dplyr::bind_rows(by_taxon, overall) |>
+  dplyr::rename(
+    Taxon = taxon, Species = n_species,
+    `At target` = n_at_target, `% at target` = pct_at_target) |>
+  knitr::kable(align = "lrrr")
+```
+
+```{r targets-plot, fig.height=3.6}
+ggplot(by_taxon, aes(x = reorder(taxon, pct_at_target), y = pct_at_target,
+                     fill = taxon)) +
+  geom_col(width = 0.65, show.legend = FALSE) +
+  geom_text(aes(label = glue("{n_at_target}/{n_species}")),
+            hjust = -0.15, size = 3.6) +
+  scale_fill_viridis_d(option = "mako", begin = 0.25, end = 0.75) +
+  scale_y_continuous(limits = c(0, 100), expand = expansion(mult = c(0, 0.12))) +
+  coord_flip() +
+  labs(x = NULL, y = "% of species meeting target",
+       title = glue("Species meeting sampling targets ({report_year})")) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"),
+        panel.grid.major.y = element_blank())
+```
+
+## Sampling priority map
+
+Each hex cell the optimizer selected is a candidate new sampling location. The
+map below is a kernel-density surface of those cells, weighted by how many
+undersampled species each would help cover — brighter areas are higher priority.
+
+```{r priority-map, fig.height=8}
+# Region outline + conservation cells from the shared spatial layers.
+region <- sf::st_read(config$paths$hex_grid, quiet = TRUE) |>
+  sf::st_union() |> sf::st_transform(config$crs$equal_area)
+
+cons <- tryCatch(
+  sf::st_read(config$paths$cons_areas_hex, quiet = TRUE) |>
+    sf::st_transform(config$crs$equal_area),
+  error = function(e) NULL)
+
+# All selected cells across taxa for this year.
+selected <- purrr::map_dfr(have, function(t) {
+  f <- file.path(greedy_dir(t), "greedy_selected_cells.gpkg")
+  if (file.exists(f)) sf::st_read(f, quiet = TRUE) |>
+    dplyr::transmute(n_spp_covered) |> dplyr::mutate(taxon = t)
+}) |> sf::st_transform(config$crs$equal_area)
+
+cents <- sf::st_centroid(selected)
+xy <- sf::st_coordinates(cents)
+df <- tibble::tibble(X = xy[, 1], Y = xy[, 2],
+                     w = pmax(1, cents$n_spp_covered))
+# Weight the KDE by species covered (repeat points by weight).
+dfw <- df[rep(seq_len(nrow(df)), df$w), ]
+
+bb <- sf::st_bbox(region)
+kde <- MASS::kde2d(dfw$X, dfw$Y, n = 300,
+                   lims = c(bb["xmin"], bb["xmax"], bb["ymin"], bb["ymax"]))
+r <- terra::rast(list(x = kde$x, y = kde$y, z = kde$z))
+terra::crs(r) <- config$crs$equal_area
+mm <- terra::minmax(r); r <- (r - mm[1]) / (mm[2] - mm[1])
+r <- terra::mask(r, terra::vect(region))
+names(r) <- "priority"
+
+p <- ggplot() +
+  geom_spatraster(data = r) +
+  geom_spatraster_contour(data = r, color = "white", alpha = 0.4,
+                          linewidth = 0.3, bins = 10) +
+  geom_sf(data = region, fill = NA, color = "grey30", linewidth = 0.4)
+if (!is.null(cons)) {
+  p <- p + geom_sf(data = cons, fill = NA, color = "grey55",
+                   linewidth = 0.2, alpha = 0.5)
+}
+p +
+  scale_fill_viridis_c(option = "inferno", direction = -1,
+                       name = "Relative\npriority", labels = scales::percent,
+                       na.value = "transparent", limits = c(0, 1)) +
+  coord_sf(expand = FALSE) +
+  labs(title = glue("Sampling-priority areas ({report_year})")) +
+  theme_void(base_size = 12) +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5,
+                                  margin = margin(b = 6)),
+        plot.background = element_rect(fill = "white", color = NA),
+        legend.key.height = unit(1.1, "cm"))
+```
+
+```{r priority-note, results='asis'}
+cat(glue(
+  "The optimizer selected **{nrow(selected)}** candidate cells across ",
+  "{length(have)} taxa for {report_year}. Higher-priority areas concentrate ",
+  "where many undersampled species' ranges overlap.\n"))
+```
+
+---
+
+*Generated from pipeline outputs in `output/indicators/species_populations/`.
+Re-run the pipeline and re-render to update.*

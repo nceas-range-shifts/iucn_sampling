@@ -113,6 +113,20 @@ Per taxon and year, under `output/indicators/species_populations/<taxon>/`:
 
 Run logs (per-species success/failure) are written under `.../logs/`.
 
+## Report
+
+`reports/species_populations_report.qmd` is a small Quarto report that reads the
+pipeline outputs and shows (1) how many species meet their sampling target, by
+taxon, and (2) a sampling-priority map (a kernel-density surface of the selected
+cells over the study region). Render it after a pipeline run:
+
+```bash
+quarto render reports/species_populations_report.qmd
+```
+
+It uses `config$focal_year` and whichever taxa have outputs, so it works on the
+sample run as-is. The rendered HTML is git-ignored (regenerate as needed).
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
