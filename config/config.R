@@ -20,15 +20,17 @@ config <- list(
   # `admin_level`/`admin_name` select the focal area from a boundary layer
   # (e.g. a US state via tigris/rnaturalearth). `country_code` scopes GBIF/eBird
   # downloads. Swap these to move the study to a different place.
+  ### NOTE: this region is used for spatial filtering in OBIS/GBIF.  Use global bbox
   region = list(
-    country_code = "US",          # ISO2, used in GBIF pred("country", ...)
-    admin_level  = "state",       # "state" | "county" | "country"
-    admin_name   = "California",   # GBIF stateProvince / boundary filter value
-    label        = "california",   # short slug used in output filenames
-    # How to obtain the region boundary polygon:
-    #   "rnaturalearth" -> pull the admin_name feature from Natural Earth.
-    #   otherwise treat this as a path to a boundary polygon (shp/gpkg).
-    boundary_source = "rnaturalearth"
+    country_code = NULL,
+    admin_level  = NULL,
+    admin_name   = "Global Oceans",  # Label only
+    label        = "global_oceans",  # slug for output filenames
+    # Region boundary: manually-defined bounding box (or path to polygon)
+    boundary_source = "bbox",
+    # Bounding box: c(xmin, ymin, xmax, ymax) in EPSG:4326
+    bbox = c(-180, 180, -90, 90)
+    # Alternative: point to a shapefile/geopackage
   ),
 
   # --- Conservation-areas layer ----------------------------------------------
@@ -36,14 +38,14 @@ config <- list(
   # so you can point this at your own dataset without editing code. The defaults
   # match the California Protected Areas / GAP-status schema used in the study.
   conservation_areas = list(
-    path          = here("data", "raw", "spatial_layers", "conservation_areas.gpkg"),
-    gap_field     = "reGAP",           # protection-status field
-    gap_values    = c(1, 2),            # statuses to keep (strict protection)
-    realm_field   = "TerrMar",          # terrestrial/marine field (NULL to skip)
-    realm_value   = "Terrestrial",
-    unit_field    = "UNIT_NAME",        # protected-area name
-    agency_field  = "MNG_AGNCY",        # managing agency
-    agency_level_field = "MNG_AG_LEV"
+    path          = here("data", "raw", "wdpa_2026", "WDPA_Nov2026_Public.gdb"),
+    gap_field     = "IUCN_CAT",            # protection-status field
+    gap_values    = c('Ia', 'Ib', 'II', 'III', 'IV'), # statuses to keep (strict protection)
+    realm_field   = "MARINE",          # terrestrial/marine field (NULL to skip)
+    realm_value   = c(1, 2),
+    unit_field    = "NAME",        # protected-area name
+    agency_field  = "MANG_AUTH",        # managing agency
+    agency_level_field = "DESIG_TYPE"
   ),
 
   # --- Years -----------------------------------------------------------------
@@ -59,12 +61,13 @@ config <- list(
   # H3 indexing; `equal_area` for area/summary stats; `display` for basemaps.
   crs = list(
     working    = "EPSG:4326",   # H3 / geographic
-    equal_area = "EPSG:3310",   # California Albers — swap for your region
+    equal_area = "EPSG:6933",     # Cylindrical Equal Area (global, good for oceans)
     display    = "EPSG:3857"    # web mercator, plotting only
   ),
 
   # --- Spatial resolution ----------------------------------------------------
-  hex_resolution = 8,           # H3 resolution for the analysis grid
+  ### level 4: ~1440 km^2; 5: ~250 km^2; 6: ~36 km^2
+  hex_resolution = 4,           # H3 resolution for the analysis grid
 
   # --- GBIF download filters -------------------------------------------------
   # Shared occurrence-download predicates (region is added from `region` above).

@@ -11,6 +11,7 @@ config/api_keys/*
 data/raw/
 data/processed/
 output/
+update_docs/
 
 # Large / binary geo + tabular formats
 *.rds
