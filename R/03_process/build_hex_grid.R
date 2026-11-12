@@ -24,15 +24,62 @@ suppressPackageStartupMessages({
 
 # Load the study-region boundary as an sf polygon in the working CRS.
 get_region_boundary <- function(cfg = config) {
+  ### options for boundary_source: 
+  ### * "global" for entire globe
+  ### * bbox in degrees (4-element vector, optional named xmin, xmax, ymin, ymax)
+  ### * "rnaturalearth" with region name to pull polygon
+  ### * a path to a spatial file readable by st_read()
   src <- cfg$region$boundary_source
+  
+  ### set up boundary_source = "global" option
+  if (identical(src, "global")) {
+    ### Return world bounds (entire globe)
+    boundary <- sf::st_sf(
+      name = "World",
+      geometry = sf::st_sfc(
+        sf::st_polygon(list(rbind(
+          c(-180, -90), c(180, -90), c(180, 90), c(-180, 90), c(-180, -90)
+        ))),
+        crs = 4326
+      )
+    )
+    return(boundary)
+  }
+
+  ### set up for boundary_source = "bbox" in deg xmin/xmax/ymin/ymax
+  if (identical(src, "bbox")) {
+    ### Create polygon from bounding box
+    bbox <- cfg$region$bbox
+
+    ### if bbox vec is named, use names in whatever order given; 
+    ### otherwise set names in assumed order
+    bbox_names <- c('xmin', 'xmax', 'ymin', 'ymax')
+    if(length(bbox) != 4) stop('bbox must include 4 values: xmin, xmax, ymin, ymax in degrees')
+    if(any(!names(bbox) %in% bbox_names)) stop('bbox must include 4 values: xmin, xmax, ymin, ymax in degrees')
+    if(is.null(names(bbox))) names(bbox) <- bbox_names
+    polygon <- sf::st_polygon(list(rbind(
+      c(bbox['xmin'], bbox['ymin']),
+      c(bbox['xmin'], bbox['ymax']),
+      c(bbox['xmax'], bbox['ymax']),
+      c(bbox['xmax'], bbox['ymin']),
+      c(bbox['xmin'], bbox['ymin'])  ### close ring
+    )))
+    boundary <- sf::st_sf(name = cfg$region$admin_name, geometry = sf::st_sfc(polygon, crs = 4326))
+    return(boundary)
+  }
+
+  ### set up boundary_source = "rnaturalearth" and filter by state
   if (identical(src, "rnaturalearth")) {
     b <- rnaturalearth::ne_states(country = "United States of America") |>
-      dplyr::filter(name == cfg$region$admin_name) |>
+      ### update: name %in% cfg$region$admin_name so multiple regions
+      ### can be added?
+      dplyr::filter(name %in% cfg$region$admin_name) |>
       dplyr::select(name)
   } else {
     b <- sf::st_read(src, quiet = TRUE)
   }
-  sf::st_transform(b, cfg$crs$working)
+  b_out <- sf::st_transform(b, cfg$crs$working)
+  return(b_out)
 }
 
 # Load and filter the conservation-areas layer to strictly-protected terrestrial
