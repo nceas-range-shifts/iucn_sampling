@@ -73,7 +73,7 @@ run_pipeline <- function(sample = FALSE, do_acquire = !sample) {
 
   if (isTRUE(do_acquire)) {
     message("== Stage 1: acquire (API-gated) ==")
-    run_gbif_downloads()
+    run_gbif_downloads(max_age_days = config$gbif_max_age_days)
     ### get_ebird_status / run_redlist_status are opt-in; call directly if needed.
   } else {
     message("== Stage 1: acquire skipped (using provided inputs) ==")

@@ -28,7 +28,7 @@ config <- list(
     label        = "global_oceans",  # slug for output filenames
     # Region boundary: manually-defined bounding box (or path to polygon)
     boundary_source = "bbox",
-    # Bounding box: c(xmin, ymin, xmax, ymax) in EPSG:4326
+    # Bounding box: c(xmin, xmax, ymin, ymax) in EPSG:4326
     bbox = c(-180, 180, -90, 90)
     # Alternative: point to a shapefile/geopackage
   ),
@@ -38,7 +38,7 @@ config <- list(
   # so you can point this at your own dataset without editing code. The defaults
   # match the California Protected Areas / GAP-status schema used in the study.
   conservation_areas = list(
-    path          = here("data", "raw", "wdpa_2026", "WDPA_Nov2026_Public.gdb"),
+    path          = here("data", "raw", "wdpa", "WDPA_Nov2026_Public.gdb"),
     gap_field     = "IUCN_CAT",            # protection-status field
     gap_values    = c('Ia', 'Ib', 'II', 'III', 'IV'), # statuses to keep (strict protection)
     realm_field   = "MARINE",          # terrestrial/marine field (NULL to skip)
@@ -69,6 +69,17 @@ config <- list(
   ### level 4: ~1440 km^2; 5: ~250 km^2; 6: ~36 km^2
   hex_resolution = 4,           # H3 resolution for the analysis grid
 
+  # --- API credentials -------------------------------------------------------
+  # Default to environment variables (.Renviron) so secrets are not committed.
+  # To set them here instead, keep that edit out of version control (e.g. in a
+  # git-ignored config/config_local.R that overrides config$credentials).
+  credentials = list(
+    iucn_redlist_key = Sys.getenv("IUCN_REDLIST_KEY"),
+    gbif_user        = Sys.getenv("GBIF_USER"),
+    gbif_pwd         = Sys.getenv("GBIF_PWD"),
+    gbif_email       = Sys.getenv("GBIF_EMAIL")
+  ),
+
   # --- GBIF download filters -------------------------------------------------
   # Shared occurrence-download predicates (region is added from `region` above).
   gbif_filters = list(
@@ -78,6 +89,11 @@ config <- list(
                         "MACHINE_OBSERVATION", "PRESERVED_SPECIMEN"),
     download_format = "SIMPLE_PARQUET"
   ),
+
+  # Re-download a taxon's GBIF data if the stored download is older than this
+  # many days (Inf = never expire). Kept outside `gbif_filters` so it does not
+  # change the request hash.
+  gbif_max_age_days = 180,
 
   # --- Paths (roots only; per-taxon/year paths are derived from these) -------
   paths = list(
@@ -104,7 +120,7 @@ config <- list(
   # By default the template runs on the committed sample list. Point this at
   # your own CSV (a `scientific_name` column is enough) to use real data. A
   # Google Sheet can be used per-taxon instead via config/taxa_config.R.
-  species_list_default = here("data/raw/iucn_2026/iucn_species_list.csv"),
+  species_list_default = here("data/raw/iucn/iucn_species_list.csv"),
 
   ### --- Which taxa to run -------------------------------------------------
   ### Must match the names defined in config/taxa_config.R.

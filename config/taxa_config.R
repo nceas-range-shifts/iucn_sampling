@@ -78,7 +78,7 @@ taxa_config <- list(
     shapefile_name_field = "sci_name",    ### IUCN field holding species name
     obis_dataset_path    = file.path(config$paths$data_raw, "obis", "mammals_marine",
                                      "occurrence.parquet"),
-    gbif_dataset_path    = file.path(config$paths$data_raw, "obis", "mammals_marine",
+    gbif_dataset_path    = file.path(config$paths$data_raw, "gbif", "mammals_marine",
                                      "occurrence.parquet"),
     gbif_columns_keep    = gbif_columns_keep
   )
