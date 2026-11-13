@@ -104,11 +104,11 @@ config <- list(
   # By default the template runs on the committed sample list. Point this at
   # your own CSV (a `scientific_name` column is enough) to use real data. A
   # Google Sheet can be used per-taxon instead via config/taxa_config.R.
-  species_list_default = here("data", "sample", "species_list.csv"),
+  species_list_default = here("data/raw/iucn_2026/iucn_species_list.csv"),
 
-  # --- Which taxa to run ------------------------------------------------------
-  # Must match the names defined in config/taxa_config.R.
-  taxa = c("bird", "reptile", "mammal")
+  ### --- Which taxa to run -------------------------------------------------
+  ### Must match the names defined in config/taxa_config.R.
+  taxa = c("mammals_marine")
 )
 
 # --- Output-path helpers (ONE canonical scheme) ------------------------------
