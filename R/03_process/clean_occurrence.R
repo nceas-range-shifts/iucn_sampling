@@ -1,8 +1,8 @@
 ### =============================================================================
-### R/03_process/clean_gbif.R  —  clean + spatially thin GBIF occurrences
+### R/03_process/clean_occurrence.R  —  clean + spatially thin occurrences (GBIF and/or OBIS)
 ### =============================================================================
 ###
-### For each per-species-year parquet from parse_gbif.R: run CoordinateCleaner,
+### For each per-species-year parquet from parse_occurrence.R: run CoordinateCleaner,
 ### apply quality filters (thresholds from config$cleaning), diagnostic checks,
 ### and H3 thinning (one record per hex cell at config$hex_resolution). Writes
 ### `<species>_clean.parquet` next to the input and a per-taxon-year run log.
@@ -12,7 +12,7 @@
 ### loop over taxa x years; every species' outcome is recorded in a run log
 ### instead of a bare cat()/NULL.
 ###
-### Requires config + R/00_utils.R.  Usage:  res <- run_clean_gbif()
+### Requires config + R/00_utils.R.  Usage:  res <- run_clean_occurrence()
 
 suppressPackageStartupMessages({
   library(dplyr)
@@ -57,6 +57,8 @@ clean_one_file <- function(input_path, output_dir, cfg = config) {
 
   res <- tryCatch({
     occ <- arrow::read_parquet(input_path) |> .normalise_gbif_cols()
+    ### Files from before OBIS merging have no record_id; fall back to gbifID.
+    if (!"record_id" %in% names(occ)) occ$record_id <- as.character(occ$gbifID)
     cl  <- cfg$cleaning
 
     d <- occ |>
@@ -85,7 +87,7 @@ clean_one_file <- function(input_path, output_dir, cfg = config) {
     d_thin <- d_sf |>
       dplyr::mutate(h3_index = h3jsr::point_to_cell(d_sf, res = cfg$hex_resolution)) |>
       dplyr::group_by(h3_index) |>
-      dplyr::mutate(tot_obs = dplyr::n_distinct(gbifID)) |>
+      dplyr::mutate(tot_obs = dplyr::n_distinct(record_id)) |>
       dplyr::slice_sample(n = 1) |>
       dplyr::ungroup() |>
       dplyr::mutate(decimalLongitude = st_coordinates(geometry)[, "X"],
@@ -113,12 +115,12 @@ clean_taxon_year <- function(taxon, year, cfg = config) {
     dplyr::mutate(taxon = taxon, year = year, .before = 1)
 }
 
-run_clean_gbif <- function(taxa = config$taxa, years = config$years, cfg = config) {
+run_clean_occurrence <- function(taxa = config$taxa, years = config$years, cfg = config) {
   grid <- tidyr::expand_grid(taxon = taxa, year = years)
   results <- purrr::pmap_dfr(list(grid$taxon, grid$year),
                              function(taxon, year) clean_taxon_year(taxon, year, cfg))
   log_path <- file.path(cfg$paths$output, "indicators", "species_populations",
-                        "logs", "clean_gbif.csv")
+                        "logs", "clean_occurrence.csv")
   ensure_parent_dir(log_path)
   readr::write_csv(results, log_path)
   results

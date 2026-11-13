@@ -129,7 +129,8 @@ manifest_path <- function(out_dir) file.path(out_dir, "gbif_download_manifest.js
 gbif_request_hash <- function(gbif_keys, cfg = config) {
   rlang::hash(list(
     taxon_keys = sort(unique(as.numeric(gbif_keys))),
-    filters    = cfg$gbif_filters,
+    ### `enabled` is excluded so toggling the source doesn't change the request.
+    filters    = cfg$gbif_filters[setdiff(names(cfg$gbif_filters), "enabled")],
     years      = range(cfg$years),
     country    = cfg$region$country_code,
     region     = region_bbox(cfg)
@@ -222,6 +223,10 @@ run_gbif_downloads <- function(taxa = config$taxa, cfg = config,
                                include_flagged = TRUE,
                                max_age_days = cfg$gbif_max_age_days %||% 180,
                                force = FALSE) {
+  if (!source_enabled("gbif", cfg)) {
+    message("[gbif] disabled (config$gbif_filters$enabled = FALSE); skipping.")
+    return(tibble::tibble())
+  }
   purrr::map_dfr(taxa, function(taxon) {
     tryCatch(
       download_one_taxon(taxon, cfg, taxa_cfg, wait, include_flagged,

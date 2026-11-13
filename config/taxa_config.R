@@ -27,7 +27,7 @@ library(here)
 ### Columns kept from raw GBIF when parsing. Defined ONCE and shared by every
 ### taxon so a per-taxon list can't silently drop a column the cleaning step needs
 ### (the original mammal config dropped basisOfRecord/individualCount, which
-### clean_gbif then filtered on — a real bug this shared list prevents).
+### clean_occurrence then filtered on — a real bug this shared list prevents).
 gbif_columns_keep <- c(
   "gbifID", "datasetKey", "occurrenceID",
   "family", "genus", "species", "scientificName",

@@ -20,8 +20,8 @@ Stage 1  ACQUIRE    ▼
                     │
 Stage 2  PROCESS    ▼
   build_hex_grid()            → hex_grid.gpkg, cons_areas_hex.gpkg
-  run_gbif_parse()            → per-species-year *_occs.parquet
-  run_clean_gbif()            → *_clean.parquet (CoordinateCleaner + H3 thinning)
+  run_occurrence_parse()            → per-species-year *_occs.parquet
+  run_clean_occurrence()            → *_clean.parquet (CoordinateCleaner + H3 thinning)
   run_build_ranges()          → range_grid_cells.parquet  (shapefiles OR raster)
                                  + spp_cells_in_region / _in_cons_area.csv
   run_richness_in_grid()      → hex_species_richness_<year>.gpkg
@@ -59,8 +59,8 @@ Every stage exposes a function taking `taxa` / `years` (defaults from config):
 source("R/run_pipeline.R")     # sources config + all stages
 build_species_crosswalk()      # Stage 0
 build_hex_grid()               # once per region
-run_gbif_parse(taxa = "reptile", years = 2024)
-run_clean_gbif(taxa = "reptile", years = 2024)
+run_occurrence_parse(taxa = "reptile", years = 2024)
+run_clean_occurrence(taxa = "reptile", years = 2024)
 run_build_ranges(taxa = "reptile")
 run_richness_in_grid(taxa = "reptile", years = 2024)
 run_all_find_sampled_cells(taxa = "reptile", years = 2024)

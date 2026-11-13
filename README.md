@@ -31,7 +31,7 @@ R/
   00_utils.R
   01_taxonomy/    resolve_species_names.R, build_species_crosswalk.R   <- runs FIRST
   02_acquire/     download_gbif.R, get_ebird_status.R, get_redlist_status.R
-  03_process/     parse_gbif.R, clean_gbif.R, build_hex_grid.R,
+  03_process/     parse_occurrence.R, clean_occurrence.R, build_hex_grid.R,
                   range_from_shapefiles_fn/_run.R, range_from_raster_fn.R
   04_indicators/  calc_richness_in_grid.R, find_sampled_cells_*,
                   find_optimal_sampling_locs_*, greedy_setcover_*

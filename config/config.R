@@ -80,14 +80,29 @@ config <- list(
     gbif_email       = Sys.getenv("GBIF_EMAIL")
   ),
 
-  ### --- GBIF download filters -------------------------------------------------
-  ### Shared occurrence-download predicates (region is added from `region` above).
+  ### --- Occurrence sources: GBIF and/or OBIS ----------------------------------
+  ### `enabled` switches each source on or off: both TRUE = merge the two (OBIS wins
+  ### where the same record is in both), or set one FALSE to use the other alone.
+  ### Disabling a source skips its download AND its use in 03_process/parse_occurrence.R.
+  ### (OBIS is only used for taxa that set `obis_dataset_path` in taxa_config.R.)
+
+  ### GBIF download filters. Shared occurrence-download predicates (region is added
+  ### from `region` above).
   gbif_filters = list(
+    enabled         = TRUE,
     has_geo_issue   = FALSE,
     has_coordinate  = TRUE,
     basis_of_record = c("HUMAN_OBSERVATION", "OBSERVATION",
                         "MACHINE_OBSERVATION", "PRESERVED_SPECIMEN"),
     download_format = "SIMPLE_PARQUET"
+  ),
+
+  ### OBIS download filters (OBIS has no server-side basis-of-record filter, so it
+  ### is applied after download; same GBIF-style values).
+  obis_filters = list(
+    enabled         = TRUE,
+    basis_of_record = c("HUMAN_OBSERVATION", "OBSERVATION",
+                        "MACHINE_OBSERVATION", "PRESERVED_SPECIMEN")
   ),
 
   ### Re-download a taxon's GBIF data if the stored download is older than this
@@ -108,7 +123,7 @@ config <- list(
   ),
 
   ### --- Occurrence-cleaning thresholds ----------------------------------------
-  ### Used by 03_process/clean_gbif.R (CoordinateCleaner + quality filters).
+  ### Used by 03_process/clean_occurrence.R (CoordinateCleaner + quality filters).
   cleaning = list(
     max_coord_uncertainty_m = 750,   ### drop records less precise than this
     min_coord_precision     = 0.01,  ### drop coarser-than-this precision
@@ -127,6 +142,12 @@ config <- list(
   taxa = c("mammals_marine")
 )
 
+### Is an occurrence source switched on? `source` is "gbif" or "obis". A missing
+### flag counts as enabled so older configs keep working.
+source_enabled <- function(source, cfg = config) {
+  isTRUE(cfg[[paste0(source, "_filters")]]$enabled %||% TRUE)
+}
+
 ### --- Output-path helpers (ONE canonical scheme) ------------------------------
 ### The original project mixed singular/plural taxon folders and an inconsistent
 ### `indicators/` segment. The template uses ONE scheme everywhere:
@@ -142,7 +163,7 @@ taxon_processed_dir <- function(taxon, cfg = config) {
   file.path(cfg$paths$data_processed, "species_populations", taxon)
 }
 
-### Per-species-year parquet directory (parsed/cleaned GBIF occurrences).
+### Per-species-year parquet directory (parsed/cleaned occurrences, GBIF and/or OBIS).
 taxon_year_occ_dir <- function(taxon, year, cfg = config) {
-  file.path(taxon_processed_dir(taxon, cfg), "gbif", as.character(year))
+  file.path(taxon_processed_dir(taxon, cfg), "occurrences", as.character(year))
 }

@@ -26,10 +26,11 @@ source(here("R", "00_utils.R"))
 
 source(here("R", "01_taxonomy", "build_species_crosswalk.R"))
 source(here("R", "02_acquire", "download_gbif.R"))
+source(here("R", "02_acquire", "download_obis.R"))
 source(here("R", "02_acquire", "get_ebird_status.R"))
 source(here("R", "02_acquire", "get_redlist_status.R"))
-source(here("R", "03_process", "parse_gbif.R"))
-source(here("R", "03_process", "clean_gbif.R"))
+source(here("R", "03_process", "parse_occurrence.R"))
+source(here("R", "03_process", "clean_occurrence.R"))
 source(here("R", "03_process", "build_hex_grid.R"))
 source(here("R", "03_process", "range_from_shapefiles_run.R"))
 source(here("R", "04_indicators", "calc_richness_in_grid.R"))
@@ -74,6 +75,8 @@ run_pipeline <- function(sample = FALSE, do_acquire = !sample) {
   if (isTRUE(do_acquire)) {
     message("== Stage 1: acquire (API-gated) ==")
     run_gbif_downloads(max_age_days = config$gbif_max_age_days)
+    ### Only taxa with an obis_dataset_path in taxa_config are fetched from OBIS.
+    run_obis_downloads()
     ### get_ebird_status / run_redlist_status are opt-in; call directly if needed.
   } else {
     message("== Stage 1: acquire skipped (using provided inputs) ==")
@@ -81,8 +84,8 @@ run_pipeline <- function(sample = FALSE, do_acquire = !sample) {
 
   message("== Stage 2: process ==")
   build_hex_grid()
-  run_gbif_parse()
-  run_clean_gbif()
+  run_occurrence_parse()
+  run_clean_occurrence()
   run_build_ranges()
   run_richness_in_grid()
 
