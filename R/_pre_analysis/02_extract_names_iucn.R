@@ -37,7 +37,7 @@ suppressPackageStartupMessages({
 
 ### Extract scientific names and metadata from one spatial file (gpkg, shp, gdb, etc.)
 ### Returns a tibble with columns: taxon, scientific_name, presence, origin, seasonal, 
-###                               legend, yrcompiled, assessment_id, id_no
+###                                legend, yrcompiled, assessment_id, id_no
 extract_from_spatial_file <- function(file_path, taxon_name, sci_name_field = "sci_name") {
   tryCatch({
     ### Read spatial data, drop geometry to speed up
@@ -84,9 +84,9 @@ extract_from_spatial_file <- function(file_path, taxon_name, sci_name_field = "s
   })
 }
 
-### Main function: scan iucn_2026 folder for all spatial data and extract species
-extract_iucn_species <- function(iucn_root = here("data", "raw", "iucn_2026"),
-                                  sci_name_field = "sci_name") {
+### Main function: scan iucn folder for all spatial data and extract species
+extract_iucn_species_from_spatial <- function(iucn_root = here("data", "raw", "iucn"),
+                                 sci_name_field = "sci_name") {
   
   ### Verify root exists
   if (!dir.exists(iucn_root)) {
@@ -159,10 +159,67 @@ extract_iucn_species <- function(iucn_root = here("data", "raw", "iucn_2026"),
 }
 
 ### Run extraction
-species_from_iucn <- extract_iucn_species()
+species_from_spatial <- extract_iucn_species_from_spatial()
+
+
+### Read assessments for each taxon -------------------------------------------
+
+assessment_cols <- c("scientificName", "internalTaxonId", "assessmentId",
+                     "redlistCategory", "redlistCriteria", "yearPublished",
+                     "populationTrend", "systems")
+
+assessment_files <- list.files(here("data", "raw", "iucn"),
+                               pattern = "^assessments\\.csv$",
+                               recursive = TRUE, full.names = TRUE)
+
+### Taxon name = folder two levels up from meta/assessments.csv
+spp_from_assessments <- purrr::map_dfr(assessment_files, function(f) {
+  readr::read_csv(f, col_select = all_of(assessment_cols),
+                  col_types = readr::cols(.default = "c"),
+                  progress = FALSE) |>
+    janitor::clean_names() |> 
+    dplyr::mutate(taxon = basename(dirname(dirname(f))), .before = 1) |> 
+    dplyr::mutate(assessment_id = as.integer(assessment_id),
+                  internal_taxon_id = as.integer(internal_taxon_id))
+})
+
+### Species appearing in more than one taxon ----------------------------------
+
+value_cols <- c("assessment_id", "redlist_category", "redlist_criteria",
+                "year_published", "population_trend", "systems")
+
+multi_taxon <- spp_from_assessments |>
+  dplyr::group_by(internal_taxon_id) |>
+  dplyr::filter(dplyr::n_distinct(taxon) > 1) |>
+  dplyr::arrange(internal_taxon_id, taxon) |>
+  dplyr::ungroup()
+
+### For each shared species, which fields differ between taxa?
+### (NA is treated as a value, so NA vs. non-NA counts as a difference)
+multi_taxon_diffs <- multi_taxon |>
+  dplyr::group_by(internal_taxon_id, scientific_name) |>
+  dplyr::summarise(
+    taxa = paste(unique(taxon), collapse = ", "),
+    dplyr::across(dplyr::all_of(value_cols),
+                  ~ dplyr::n_distinct(.x, na.rm = FALSE) > 1,
+                  .names = "differs_{.col}"),
+    .groups = "drop"
+  ) |>
+  dplyr::mutate(any_differ = dplyr::if_any(dplyr::starts_with("differs_")))
+
+message(glue("{dplyr::n_distinct(spp_from_assessments$internal_taxon_id)} unique species in ",
+             "{nrow(spp_from_assessments)} assessment rows; ",
+             "{dplyr::n_distinct(multi_taxon$internal_taxon_id)} species appear in >1 taxon, ",
+             "{sum(multi_taxon_diffs$any_differ)} with differing info"))
+
+### Bind assessment info to spatial info and write out ---------------------------
+
+spp_list_out <- species_from_spatial |>
+  dplyr::left_join(spp_from_assessments, 
+    by = c('taxon', 'scientific_name', 'assessment_id', 'id_no' = 'internal_taxon_id')) |> 
+  dplyr::filter(grepl('marine', systems, ignore.case = TRUE))
 
 ### Write to CSV
 output_path <- here("data", "raw", "iucn_species_list.csv")
-readr::write_csv(species_from_iucn, output_path)
+readr::write_csv(spp_list_out, output_path)
 message(glue("\nSpecies list written to: {output_path}"))
-
