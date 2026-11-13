@@ -1,18 +1,18 @@
-# =============================================================================
-# R/03_process/build_hex_grid.R  —  region H3 grid + conservation-area cells
-# =============================================================================
+### =============================================================================
+### R/03_process/build_hex_grid.R  —  region H3 grid + conservation-area cells
+### =============================================================================
 #
-# Produces the two shared spatial layers the rest of the pipeline joins on:
-#   config$paths$hex_grid        — every H3 cell covering the study region
-#   config$paths$cons_areas_hex  — the subset of cells inside conservation areas,
-#                                  with managing-agency / GAP attributes.
+### Produces the two shared spatial layers the rest of the pipeline joins on:
+###   config$paths$hex_grid        — every H3 cell covering the study region
+###   config$paths$cons_areas_hex  — the subset of cells inside conservation areas,
+###                                  with managing-agency / GAP attributes.
 #
-# Reworked from get_hex_grid.R: region and resolution come from config; the
-# conservation-layer field names are configurable; the bird eBird-raster zonal
-# block (a range source, not a grid step) is moved to range_from_raster.R; and
-# the mangled double-assignment bug at get_hex_grid.R:144-147 is dropped.
+### Reworked from get_hex_grid.R: region and resolution come from config; the
+### conservation-layer field names are configurable; the bird eBird-raster zonal
+### block (a range source, not a grid step) is moved to range_from_raster.R; and
+### the mangled double-assignment bug at get_hex_grid.R:144-147 is dropped.
 #
-# Requires config + R/00_utils.R.  Usage:  build_hex_grid()
+### Requires config + R/00_utils.R.  Usage:  build_hex_grid()
 
 suppressPackageStartupMessages({
   library(dplyr)
@@ -22,7 +22,7 @@ suppressPackageStartupMessages({
   library(here)
 })
 
-# Load the study-region boundary as an sf polygon in the working CRS.
+### Load the study-region boundary as an sf polygon in the working CRS.
 get_region_boundary <- function(cfg = config) {
   ### options for boundary_source: 
   ### * "global" for entire globe
@@ -82,8 +82,8 @@ get_region_boundary <- function(cfg = config) {
   return(b_out)
 }
 
-# Load and filter the conservation-areas layer to strictly-protected terrestrial
-# units, dissolving to one geometry per management unit.
+### Load and filter the conservation-areas layer to strictly-protected terrestrial
+### units, dissolving to one geometry per management unit.
 get_conservation_areas <- function(cfg = config) {
   ca <- cfg$conservation_areas
   sfp <- sf::st_read(ca$path, quiet = TRUE) |> sf::st_zm(drop = TRUE)
@@ -102,14 +102,14 @@ get_conservation_areas <- function(cfg = config) {
 build_hex_grid <- function(cfg = config) {
   region <- get_region_boundary(cfg)
 
-  # Region H3 grid.
+  ### Region H3 grid.
   ids <- h3jsr::polygon_to_cells(region, res = cfg$hex_resolution, simple = TRUE)
   hex_grid <- h3jsr::cell_to_polygon(ids, simple = FALSE) |>
     dplyr::rename(h3_index = h3_address)
   ensure_parent_dir(cfg$paths$hex_grid)
   sf::st_write(hex_grid, cfg$paths$hex_grid, delete_dsn = TRUE, quiet = TRUE)
 
-  # Conservation-area cells (attributes summarised per cell).
+  ### Conservation-area cells (attributes summarised per cell).
   ca_cfg <- cfg$conservation_areas
   cons <- get_conservation_areas(cfg)
 

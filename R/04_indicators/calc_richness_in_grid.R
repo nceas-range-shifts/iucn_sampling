@@ -1,16 +1,16 @@
-# =============================================================================
-# R/04_indicators/calc_richness_in_grid.R  —  species richness per hex cell
-# =============================================================================
+### =============================================================================
+### R/04_indicators/calc_richness_in_grid.R  —  species richness per hex cell
+### =============================================================================
 #
-# Summarise cleaned occurrences to per-hex-cell species richness and record
-# counts, joined onto the region hex grid so the result carries geometry.
-# Written as a GPKG per taxon-year (the sampling step reads it back).
+### Summarise cleaned occurrences to per-hex-cell species richness and record
+### counts, joined onto the region hex grid so the result carries geometry.
+### Written as a GPKG per taxon-year (the sampling step reads it back).
 #
-# Reworked from calc_gbif_spp_rich_in_grid.R: uses the canonical `h3_index`
-# cell column, joins to the grid geometry (the original wrote a geometry-less
-# tibble via st_write), and derives paths from sampling_config.
+### Reworked from calc_gbif_spp_rich_in_grid.R: uses the canonical `h3_index`
+### cell column, joins to the grid geometry (the original wrote a geometry-less
+### tibble via st_write), and derives paths from sampling_config.
 #
-# Requires config + sampling_config + R/00_utils.R.
+### Requires config + sampling_config + R/00_utils.R.
 
 suppressPackageStartupMessages({
   library(arrow)
@@ -20,7 +20,7 @@ suppressPackageStartupMessages({
   library(here)
 })
 
-# One taxon-year: read every *_clean.parquet, summarise, join to grid, write.
+### One taxon-year: read every *_clean.parquet, summarise, join to grid, write.
 calc_richness_in_grid <- function(taxon, year, cfg = config, samp_cfg = NULL) {
   if (is.null(samp_cfg)) samp_cfg <- make_sampling_config(year, cfg = cfg)[[taxon]]
   occ_dir <- taxon_year_occ_dir(taxon, year, cfg)

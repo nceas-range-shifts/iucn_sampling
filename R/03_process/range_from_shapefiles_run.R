@@ -1,12 +1,12 @@
-# =============================================================================
-# R/03_process/range_from_shapefiles_run.R  —  range-building driver
-# =============================================================================
-# Builds per-species hex range cells for every taxon, dispatching by
-# range_source: "shapefile" -> range_from_shapefiles_fn.R,
-#               "raster"    -> range_from_raster_fn.R (eBird birds).
-# Both write the same range_grid_cells.parquet shape, so downstream is uniform.
+### =============================================================================
+### R/03_process/range_from_shapefiles_run.R  —  range-building driver
+### =============================================================================
+### Builds per-species hex range cells for every taxon, dispatching by
+### range_source: "shapefile" -> range_from_shapefiles_fn.R,
+###               "raster"    -> range_from_raster_fn.R (eBird birds).
+### Both write the same range_grid_cells.parquet shape, so downstream is uniform.
 #
-# Requires config + taxa_config + sampling_config + R/00_utils.R.
+### Requires config + taxa_config + sampling_config + R/00_utils.R.
 
 source(here::here("R", "03_process", "range_from_shapefiles_fn.R"))
 source(here::here("R", "03_process", "range_from_raster_fn.R"))

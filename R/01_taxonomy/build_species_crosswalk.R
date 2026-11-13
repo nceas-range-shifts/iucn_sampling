@@ -1,29 +1,29 @@
-# =============================================================================
-# R/01_taxonomy/build_species_crosswalk.R  —  STAGE 0 driver
-# =============================================================================
+### =============================================================================
+### R/01_taxonomy/build_species_crosswalk.R  —  STAGE 0 driver
+### =============================================================================
 #
-# Turns each taxon's raw input species list into ONE authoritative crosswalk
-# that every downstream stage joins on. Runs FIRST in the pipeline.
+### Turns each taxon's raw input species list into ONE authoritative crosswalk
+### that every downstream stage joins on. Runs FIRST in the pipeline.
 #
-# What it adds beyond resolve_species_names():
-#   - range_shapefile_name / range_shapefile_path for shapefile-range taxa.
-#     Range shapefiles carry the vendor's own species name (the shapefile_name_
-#     field, e.g. "SName"), which may not match the GBIF canonical name. We
-#     resolve those shapefile names through the GBIF backbone and join them to
-#     the crosswalk on the shared gbif_usage_key -- the same key-bridge the
-#     resolver already uses for eBird. This is the join key that lets range
-#     cells (keyed by shapefile name) line up with occurrence/richness data
-#     (keyed by GBIF canonical name).
+### What it adds beyond resolve_species_names():
+###   - range_shapefile_name / range_shapefile_path for shapefile-range taxa.
+###     Range shapefiles carry the vendor's own species name (the shapefile_name_
+###     field, e.g. "SName"), which may not match the GBIF canonical name. We
+###     resolve those shapefile names through the GBIF backbone and join them to
+###     the crosswalk on the shared gbif_usage_key -- the same key-bridge the
+###     resolver already uses for eBird. This is the join key that lets range
+###     cells (keyed by shapefile name) line up with occurrence/richness data
+###     (keyed by GBIF canonical name).
 #
-# Output: data/processed/species_crosswalk.csv (one row per species, all taxa).
+### Output: data/processed/species_crosswalk.csv (one row per species, all taxa).
 #
-# Requires config/config.R + config/taxa_config.R sourced first.
+### Requires config/config.R + config/taxa_config.R sourced first.
 #
-# Usage:
-#   source("config/config.R"); source("config/taxa_config.R")
-#   source("R/00_utils.R")
-#   source("R/01_taxonomy/build_species_crosswalk.R")
-#   crosswalk <- build_species_crosswalk()
+### Usage:
+###   source("config/config.R"); source("config/taxa_config.R")
+###   source("R/00_utils.R")
+###   source("R/01_taxonomy/build_species_crosswalk.R")
+###   crosswalk <- build_species_crosswalk()
 
 suppressPackageStartupMessages({
   library(dplyr)
@@ -37,8 +37,8 @@ suppressPackageStartupMessages({
 
 source(here::here("R", "01_taxonomy", "resolve_species_names.R"))
 
-# Load one taxon's raw species list from its configured CSV or Google Sheet.
-# When reading a shared CSV that carries a `taxon` column, filter to this taxon.
+### Load one taxon's raw species list from its configured CSV or Google Sheet.
+### When reading a shared CSV that carries a `taxon` column, filter to this taxon.
 load_species_list <- function(taxon, tcfg) {
   src <- tcfg$species_source
   has_sheet <- !is.null(src$sheet_url) && !is.na(src$sheet_url) && nzchar(src$sheet_url)
@@ -52,7 +52,7 @@ load_species_list <- function(taxon, tcfg) {
     stop(glue("No species source found for taxon '{taxon}' (csv_path missing)."))
   }
 
-  # Optional filter when a shared list holds multiple taxa.
+  ### Optional filter when a shared list holds multiple taxa.
   if (!is.null(src$taxon_filter)) {
     df_clean <- janitor::clean_names(df)
     if ("taxon" %in% names(df_clean)) {
@@ -62,8 +62,8 @@ load_species_list <- function(taxon, tcfg) {
   df
 }
 
-# Read the species-name attribute out of every range shapefile in a directory.
-# Only the attribute table is needed, so geometry is dropped immediately.
+### Read the species-name attribute out of every range shapefile in a directory.
+### Only the attribute table is needed, so geometry is dropped immediately.
 harvest_shapefile_names <- function(shapefile_dir, name_field) {
   if (is.null(shapefile_dir) || !dir.exists(shapefile_dir)) {
     return(tibble::tibble(range_shapefile_name = character(),
@@ -89,8 +89,8 @@ harvest_shapefile_names <- function(shapefile_dir, name_field) {
   })
 }
 
-# Resolve shapefile names to GBIF keys and attach them to the crosswalk on
-# gbif_usage_key. Rows in the crosswalk with no matching shapefile get NA.
+### Resolve shapefile names to GBIF keys and attach them to the crosswalk on
+### gbif_usage_key. Rows in the crosswalk with no matching shapefile get NA.
 attach_shapefile_link <- function(crosswalk, shp_names) {
   if (nrow(shp_names) == 0) {
     return(dplyr::mutate(crosswalk,
@@ -113,7 +113,7 @@ attach_shapefile_link <- function(crosswalk, shp_names) {
     dplyr::left_join(link, by = "gbif_usage_key")
 }
 
-# Build one taxon's crosswalk (names resolved + shapefile linkage where used).
+### Build one taxon's crosswalk (names resolved + shapefile linkage where used).
 build_taxon_crosswalk <- function(taxon, tcfg, cfg = config) {
   raw <- load_species_list(taxon, tcfg)
 
@@ -127,7 +127,7 @@ build_taxon_crosswalk <- function(taxon, tcfg, cfg = config) {
     shp_names <- harvest_shapefile_names(tcfg$shapefile_dir, tcfg$shapefile_name_field)
     cw <- attach_shapefile_link(cw, shp_names)
 
-    # Flag species whose range shapefile we could not match -> review.
+    ### Flag species whose range shapefile we could not match -> review.
     cw <- cw |>
       dplyr::mutate(
         needs_review = needs_review | is.na(range_shapefile_name),
@@ -146,7 +146,7 @@ build_taxon_crosswalk <- function(taxon, tcfg, cfg = config) {
   dplyr::mutate(cw, taxon = taxon, .before = 1)
 }
 
-# Build the master crosswalk across all configured taxa and write it once.
+### Build the master crosswalk across all configured taxa and write it once.
 build_species_crosswalk <- function(taxa = config$taxa,
                                     taxa_cfg = taxa_config,
                                     cfg = config,

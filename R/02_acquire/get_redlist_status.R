@@ -1,14 +1,14 @@
-# =============================================================================
-# R/02_acquire/get_redlist_status.R  —  IUCN Red List status (OPTIONAL)
-# =============================================================================
+### =============================================================================
+### R/02_acquire/get_redlist_status.R  —  IUCN Red List status (OPTIONAL)
+### =============================================================================
 #
-# Look up each species' IUCN Red List category. Optional: only needed if you use
-# conservation status in downstream summaries.
+### Look up each species' IUCN Red List category. Optional: only needed if you use
+### conservation status in downstream summaries.
 #
-# API-gated: needs IUCN_REDLIST_KEY in .Renviron. Reads species from the master
-# crosswalk (name_gbif), keyed off the canonical name — not a hand-edited path.
+### API-gated: needs IUCN_REDLIST_KEY in .Renviron. Reads species from the master
+### crosswalk (name_gbif), keyed off the canonical name — not a hand-edited path.
 #
-# Requires config + R/00_utils.R + a built crosswalk.  Usage: run_redlist_status()
+### Requires config + R/00_utils.R + a built crosswalk.  Usage: run_redlist_status()
 
 suppressPackageStartupMessages({
   library(rredlist)
@@ -19,7 +19,7 @@ suppressPackageStartupMessages({
   library(here)
 })
 
-# One species -> one-row status tibble (never stops the run).
+### One species -> one-row status tibble (never stops the run).
 get_status_one <- function(sci_name, key, pause = 2) {
   res <- tryCatch({
     parts <- strsplit(trimws(sci_name), "\\s+")[[1]]

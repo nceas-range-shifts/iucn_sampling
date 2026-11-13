@@ -1,10 +1,10 @@
-# =============================================================================
-# R/04_indicators/find_optimal_sampling_locs_run.R  —  driver (taxa x years)
-# =============================================================================
-# Replaces run_find_optimal_samp_locs.R, which reassigned `taxon` and re-
-# source()'d the whole script six times. Here it is a plain loop.
+### =============================================================================
+### R/04_indicators/find_optimal_sampling_locs_run.R  —  driver (taxa x years)
+### =============================================================================
+### Replaces run_find_optimal_samp_locs.R, which reassigned `taxon` and re-
+### source()'d the whole script six times. Here it is a plain loop.
 #
-# Requires config + sampling_config + R/00_utils.R.
+### Requires config + sampling_config + R/00_utils.R.
 
 source(here::here("R", "04_indicators", "find_optimal_sampling_locs_fn.R"))
 

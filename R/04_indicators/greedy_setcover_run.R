@@ -1,9 +1,9 @@
-# =============================================================================
-# R/04_indicators/greedy_setcover_run.R  —  driver
-# =============================================================================
-# Runs the greedy set-cover per taxon (and optionally "combined") for a year.
+### =============================================================================
+### R/04_indicators/greedy_setcover_run.R  —  driver
+### =============================================================================
+### Runs the greedy set-cover per taxon (and optionally "combined") for a year.
 #
-# Requires config + sampling_config + R/00_utils.R.
+### Requires config + sampling_config + R/00_utils.R.
 
 source(here::here("R", "04_indicators", "greedy_setcover_fn.R"))
 

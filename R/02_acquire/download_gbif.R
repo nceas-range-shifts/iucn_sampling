@@ -1,19 +1,19 @@
-# =============================================================================
-# R/02_acquire/download_gbif.R  —  submit GBIF occurrence downloads
-# =============================================================================
+### =============================================================================
+### R/02_acquire/download_gbif.R  —  submit GBIF occurrence downloads
+### =============================================================================
 #
-# Reads the master crosswalk built in Stage 0, takes each taxon's already-
-# resolved GBIF usageKeys, and submits one filtered occurrence download per
-# taxon. Name resolution does NOT happen here (that is Stage 0's job) — this
-# script only downloads.
+### Reads the master crosswalk built in Stage 0, takes each taxon's already-
+### resolved GBIF usageKeys, and submits one filtered occurrence download per
+### taxon. Name resolution does NOT happen here (that is Stage 0's job) — this
+### script only downloads.
 #
-# API-gated: needs GBIF credentials in .Renviron (GBIF_USER/PWD/EMAIL).
+### API-gated: needs GBIF credentials in .Renviron (GBIF_USER/PWD/EMAIL).
 #
-# Requires config + taxa_config + R/00_utils.R sourced first.
+### Requires config + taxa_config + R/00_utils.R sourced first.
 #
-# Usage:
-#   res <- run_gbif_downloads()                 # all configured taxa
-#   res <- run_gbif_downloads(taxa = "reptile", year_range = c(2014, 2015))
+### Usage:
+###   res <- run_gbif_downloads()                 # all configured taxa
+###   res <- run_gbif_downloads(taxa = "reptile", year_range = c(2014, 2015))
 
 suppressPackageStartupMessages({
   library(dplyr)
@@ -24,7 +24,7 @@ suppressPackageStartupMessages({
   library(here)
 })
 
-# Load the master crosswalk (built by Stage 0), optionally filtered to a taxon.
+### Load the master crosswalk (built by Stage 0), optionally filtered to a taxon.
 load_crosswalk <- function(taxon = NULL, cfg = config) {
   if (!file.exists(cfg$paths$crosswalk)) {
     stop(glue("Crosswalk not found at {cfg$paths$crosswalk}. Run Stage 0 ",
@@ -35,8 +35,8 @@ load_crosswalk <- function(taxon = NULL, cfg = config) {
   cw
 }
 
-# GBIF usageKeys to download. Flagged (needs_review) rows are included by
-# default; set include_flagged = FALSE to drop them.
+### GBIF usageKeys to download. Flagged (needs_review) rows are included by
+### default; set include_flagged = FALSE to drop them.
 get_gbif_keys <- function(crosswalk, include_flagged = TRUE) {
   keys <- dplyr::filter(crosswalk, !is.na(gbif_usage_key))
   if (!isTRUE(include_flagged)) keys <- dplyr::filter(keys, !needs_review)
@@ -67,7 +67,7 @@ submit_gbif_download <- function(gbif_keys, cfg = config) {
   do.call(rgbif::occ_download, preds)
 }
 
-# Download one taxon; returns a one-row result tibble (a run-log entry).
+### Download one taxon; returns a one-row result tibble (a run-log entry).
 download_one_taxon <- function(taxon, cfg = config, taxa_cfg = taxa_config,
                                wait = TRUE, include_flagged = TRUE) {
   tcfg <- taxa_cfg[[taxon]]
@@ -96,7 +96,7 @@ download_one_taxon <- function(taxon, cfg = config, taxa_cfg = taxa_config,
   )
 }
 
-# Driver over taxa, with per-taxon error capture so one failure doesn't abort.
+### Driver over taxa, with per-taxon error capture so one failure doesn't abort.
 run_gbif_downloads <- function(taxa = config$taxa, cfg = config,
                                taxa_cfg = taxa_config, wait = TRUE,
                                include_flagged = TRUE) {

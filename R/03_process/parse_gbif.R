@@ -1,17 +1,17 @@
-# =============================================================================
-# R/03_process/parse_gbif.R  —  subset raw GBIF into per-species-year parquet
-# =============================================================================
+### =============================================================================
+### R/03_process/parse_gbif.R  —  subset raw GBIF into per-species-year parquet
+### =============================================================================
 #
-# Reads each taxon's raw GBIF occurrence dataset and writes one parquet file per
-# species-year under data/processed/species_populations/<taxon>/gbif/<year>/.
+### Reads each taxon's raw GBIF occurrence dataset and writes one parquet file per
+### species-year under data/processed/species_populations/<taxon>/gbif/<year>/.
 #
-# Species come from the master crosswalk's `name_gbif` (the GBIF accepted
-# binomial) — the single canonical name column — so the filter always matches
-# GBIF's own `species` field regardless of taxon.
+### Species come from the master crosswalk's `name_gbif` (the GBIF accepted
+### binomial) — the single canonical name column — so the filter always matches
+### GBIF's own `species` field regardless of taxon.
 #
-# Requires config + taxa_config + R/00_utils.R + a built crosswalk.
+### Requires config + taxa_config + R/00_utils.R + a built crosswalk.
 #
-# Usage:  res <- run_gbif_parse()
+### Usage:  res <- run_gbif_parse()
 
 suppressPackageStartupMessages({
   library(dplyr)
@@ -23,7 +23,7 @@ suppressPackageStartupMessages({
   library(here)
 })
 
-# Case-insensitive resolution of requested columns to the dataset's columns.
+### Case-insensitive resolution of requested columns to the dataset's columns.
 resolve_columns_to_keep <- function(dataset, columns_to_keep) {
   available <- names(dataset)
   lookup <- setNames(available, tolower(available))
@@ -35,7 +35,7 @@ resolve_columns_to_keep <- function(dataset, columns_to_keep) {
   resolved
 }
 
-# Write one species-year subset; returns a one-row status tibble.
+### Write one species-year subset; returns a one-row status tibble.
 write_gbif_subset <- function(dataset, target_species, target_year,
                               species_col, year_col, columns_to_keep, output_dir) {
   res <- dataset |>
@@ -58,7 +58,7 @@ write_gbif_subset <- function(dataset, target_species, target_year,
                  rows = nrow(res), file_path = out_path, status = "written")
 }
 
-# Parse one taxon across all configured years.
+### Parse one taxon across all configured years.
 parse_one_taxon <- function(taxon, cfg = config, taxa_cfg = taxa_config) {
   tcfg <- taxa_cfg[[taxon]]
   dataset_path <- tcfg$gbif_dataset_path
@@ -89,7 +89,7 @@ parse_one_taxon <- function(taxon, cfg = config, taxa_cfg = taxa_config) {
     )
   )
 
-  # Per-taxon run log.
+  ### Per-taxon run log.
   log_path <- file.path(taxon_output_dir(taxon, cfg), "logs",
                         glue("parse_gbif_{taxon}.csv"))
   ensure_parent_dir(log_path)

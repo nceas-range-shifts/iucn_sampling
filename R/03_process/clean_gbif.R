@@ -1,18 +1,18 @@
-# =============================================================================
-# R/03_process/clean_gbif.R  —  clean + spatially thin GBIF occurrences
-# =============================================================================
+### =============================================================================
+### R/03_process/clean_gbif.R  —  clean + spatially thin GBIF occurrences
+### =============================================================================
 #
-# For each per-species-year parquet from parse_gbif.R: run CoordinateCleaner,
-# apply quality filters (thresholds from config$cleaning), diagnostic checks,
-# and H3 thinning (one record per hex cell at config$hex_resolution). Writes
-# `<species>_clean.parquet` next to the input and a per-taxon-year run log.
+### For each per-species-year parquet from parse_gbif.R: run CoordinateCleaner,
+### apply quality filters (thresholds from config$cleaning), diagnostic checks,
+### and H3 thinning (one record per hex cell at config$hex_resolution). Writes
+### `<species>_clean.parquet` next to the input and a per-taxon-year run log.
 #
-# Reworked from the original clean_gbif_occs.R: thresholds and CRS/resolution
-# come from config; the ~13 hand-toggled input/output pairs are replaced by a
-# loop over taxa x years; every species' outcome is recorded in a run log
-# instead of a bare cat()/NULL.
+### Reworked from the original clean_gbif_occs.R: thresholds and CRS/resolution
+### come from config; the ~13 hand-toggled input/output pairs are replaced by a
+### loop over taxa x years; every species' outcome is recorded in a run log
+### instead of a bare cat()/NULL.
 #
-# Requires config + R/00_utils.R.  Usage:  res <- run_clean_gbif()
+### Requires config + R/00_utils.R.  Usage:  res <- run_clean_gbif()
 
 suppressPackageStartupMessages({
   library(dplyr)
@@ -27,9 +27,9 @@ suppressPackageStartupMessages({
   library(here)
 })
 
-# GBIF SIMPLE_PARQUET uses lower-case column names; normalise the ones we use to
-# the canonical camelCase, renaming only those actually present (the original
-# rename() errored if any were missing).
+### GBIF SIMPLE_PARQUET uses lower-case column names; normalise the ones we use to
+### the canonical camelCase, renaming only those actually present (the original
+### rename() errored if any were missing).
 .normalise_gbif_cols <- function(df) {
   map <- c(
     gbifID = "gbifid", datasetKey = "datasetkey", occurrenceID = "occurrenceid",
@@ -49,7 +49,7 @@ suppressPackageStartupMessages({
   df
 }
 
-# Clean + thin one species file. Returns a one-row status tibble (never stops).
+### Clean + thin one species file. Returns a one-row status tibble (never stops).
 clean_one_file <- function(input_path, output_dir, cfg = config) {
   clean_name <- basename(input_path) |>
     str_remove("_occs\\.parquet$") |>
@@ -79,7 +79,7 @@ clean_one_file <- function(input_path, output_dir, cfg = config) {
                             file_path = NA_character_, status = "empty_after_clean"))
     }
 
-    # H3 thinning: one record per hex cell.
+    ### H3 thinning: one record per hex cell.
     d_sf <- st_as_sf(d, coords = c("decimalLongitude", "decimalLatitude"),
                      crs = cfg$crs$working)
     d_thin <- d_sf |>
@@ -104,7 +104,7 @@ clean_one_file <- function(input_path, output_dir, cfg = config) {
   res
 }
 
-# Clean one taxon-year: every parsed occ file in that folder.
+### Clean one taxon-year: every parsed occ file in that folder.
 clean_taxon_year <- function(taxon, year, cfg = config) {
   in_dir <- taxon_year_occ_dir(taxon, year, cfg)
   files <- list.files(in_dir, pattern = "_occs\\.parquet$", full.names = TRUE)

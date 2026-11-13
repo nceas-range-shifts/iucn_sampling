@@ -1,26 +1,26 @@
-# =============================================================================
-# R/01_taxonomy/resolve_species_names.R  —  the taxonomy engine
-# =============================================================================
+### =============================================================================
+### R/01_taxonomy/resolve_species_names.R  —  the taxonomy engine
+### =============================================================================
 #
-# One function to turn a raw input species list into a clean, non-destructive
-# crosswalk that every downstream stage joins on.
+### One function to turn a raw input species list into a clean, non-destructive
+### crosswalk that every downstream stage joins on.
 #
-# Engine (in order):
-#   1. gna_parse    - flag malformed / non-binomial names before we trust them.
-#   2. GBIF backbone (name_backbone_checklist) - AUTHORITATIVE. Resolves synonyms
-#      itself: for a synonym `status == "SYNONYM"` but `species` / `speciesKey`
-#      point at the ACCEPTED taxon, which is what we want for occ_download().
-#   3. gna_verifier - cross-source sanity check on the non-bird names, to surface
-#      disagreements for manual review.
-#   4. eBird        - attach the current speciesCode by joining on the GBIF
-#      ACCEPTED key (not the verbatim name). Rescues renamed birds (Chen ->
-#      Anser, Picoides -> Dryobates, Anas -> Spatula/Mareca, ...).
+### Engine (in order):
+###   1. gna_parse    - flag malformed / non-binomial names before we trust them.
+###   2. GBIF backbone (name_backbone_checklist) - AUTHORITATIVE. Resolves synonyms
+###      itself: for a synonym `status == "SYNONYM"` but `species` / `speciesKey`
+###      point at the ACCEPTED taxon, which is what we want for occ_download().
+###   3. gna_verifier - cross-source sanity check on the non-bird names, to surface
+###      disagreements for manual review.
+###   4. eBird        - attach the current speciesCode by joining on the GBIF
+###      ACCEPTED key (not the verbatim name). Rescues renamed birds (Chen ->
+###      Anser, Picoides -> Dryobates, Anas -> Spatula/Mareca, ...).
 #
-# Output: ONE tidy tibble, one row per submitted name, birds and non-birds
-# together, with a stable schema (see the return docs on resolve_species_names).
+### Output: ONE tidy tibble, one row per submitted name, birds and non-birds
+### together, with a stable schema (see the return docs on resolve_species_names).
 #
-# The shapefile linkage (range_shapefile_name) is added on TOP of this output by
-# build_species_crosswalk.R, reusing the same GBIF-key bridge.
+### The shapefile linkage (range_shapefile_name) is added on TOP of this output by
+### build_species_crosswalk.R, reusing the same GBIF-key bridge.
 
 suppressPackageStartupMessages({
   library(dplyr)
@@ -32,9 +32,9 @@ suppressPackageStartupMessages({
   library(rebird)
 })
 
-# Map GBIF class -> the taxon_group labels used across this project.
-# NOTE: the GBIF backbone reports reptiles at the "class" of Squamata /
-# Testudines / Crocodylia rather than "Reptilia", so those are mapped here too.
+### Map GBIF class -> the taxon_group labels used across this project.
+### NOTE: the GBIF backbone reports reptiles at the "class" of Squamata /
+### Testudines / Crocodylia rather than "Reptilia", so those are mapped here too.
 .class_to_group <- c(
   AVES = "bird",
   MAMMALIA = "mammal",
@@ -45,25 +45,25 @@ suppressPackageStartupMessages({
   AMPHIBIA = "amphibian"
 )
 
-# Ranks we accept from gna_parse as "a real species-or-finer name".
+### Ranks we accept from gna_parse as "a real species-or-finer name".
 .accepted_parse_ranks <- c("sp.", "var.", "ssp.", "subsp.", "f.")
 
-# Default cache/override locations (portable, under data/processed).
+### Default cache/override locations (portable, under data/processed).
 .default_ebird_cache <- here::here("data", "processed", "ebird_gbif_key_map.csv")
 .default_overrides   <- here::here("data", "processed", "name_overrides.csv")
 
-# ---------------------------------------------------------------------------
-# ebird_gbif_map(): eBird current name/code keyed to GBIF usageKey
-# ---------------------------------------------------------------------------
-# eBird tracks a more current taxonomy than the GBIF backbone (e.g. Ardenna,
-# Hydrobates, Dryobates), so a name-to-name join between the two misses renamed
-# birds. Instead we resolve every eBird species name through the GBIF backbone
-# once and key it to the GBIF ACCEPTED speciesKey. Any GBIF-resolved name
-# (Puffinus griseus, key 5739277) then joins to eBird's current name (Ardenna
-# grisea, same key) on that shared key.
+### ---------------------------------------------------------------------------
+### ebird_gbif_map(): eBird current name/code keyed to GBIF usageKey
+### ---------------------------------------------------------------------------
+### eBird tracks a more current taxonomy than the GBIF backbone (e.g. Ardenna,
+### Hydrobates, Dryobates), so a name-to-name join between the two misses renamed
+### birds. Instead we resolve every eBird species name through the GBIF backbone
+### once and key it to the GBIF ACCEPTED speciesKey. Any GBIF-resolved name
+### (Puffinus griseus, key 5739277) then joins to eBird's current name (Ardenna
+### grisea, same key) on that shared key.
 #
-# Resolving the full eBird taxonomy (~11k species) takes ~40s, so the result is
-# cached. Pass rebuild = TRUE to refresh, or cache_path = NULL to skip caching.
+### Resolving the full eBird taxonomy (~11k species) takes ~40s, so the result is
+### cached. Pass rebuild = TRUE to refresh, or cache_path = NULL to skip caching.
 ebird_gbif_map <- function(cache_path = .default_ebird_cache, rebuild = FALSE) {
   if (!is.null(cache_path) && !isTRUE(rebuild) && file.exists(cache_path)) {
     return(readr::read_csv(cache_path, show_col_types = FALSE))
@@ -96,18 +96,18 @@ ebird_gbif_map <- function(cache_path = .default_ebird_cache, rebuild = FALSE) {
   map
 }
 
-# ---------------------------------------------------------------------------
-# apply_name_overrides(): fold in hand-curated fixes
-# ---------------------------------------------------------------------------
-# Some names legitimately can't be auto-resolved (usually the source list uses a
-# newer taxonomy than the GBIF backbone). Rather than hand-edit the generated
-# crosswalk (a rebuild would clobber it), record fixes ONCE in a version-
-# controlled CSV and re-apply them every run.
+### ---------------------------------------------------------------------------
+### apply_name_overrides(): fold in hand-curated fixes
+### ---------------------------------------------------------------------------
+### Some names legitimately can't be auto-resolved (usually the source list uses a
+### newer taxonomy than the GBIF backbone). Rather than hand-edit the generated
+### crosswalk (a rebuild would clobber it), record fixes ONCE in a version-
+### controlled CSV and re-apply them every run.
 #
-# The overrides CSV must have a `name_input` column (the join key) plus any of:
-#   name_accepted, name_gbif, gbif_usage_key, ebird_code, ebird_name, common_name
-# Only the columns you fill are overridden. Any listed row is treated as
-# human-reviewed: needs_review is set FALSE and `override` is set TRUE.
+### The overrides CSV must have a `name_input` column (the join key) plus any of:
+###   name_accepted, name_gbif, gbif_usage_key, ebird_code, ebird_name, common_name
+### Only the columns you fill are overridden. Any listed row is treated as
+### human-reviewed: needs_review is set FALSE and `override` is set TRUE.
 apply_name_overrides <- function(crosswalk, overrides_path = .default_overrides) {
   finish <- function(df) {
     if (!"override" %in% names(df)) df$override <- FALSE
@@ -160,24 +160,24 @@ apply_name_overrides <- function(crosswalk, overrides_path = .default_overrides)
   finish(crosswalk)
 }
 
-# ---------------------------------------------------------------------------
-# resolve_species_names()
-# ---------------------------------------------------------------------------
-# Args:
-#   spp_df        data frame containing a scientific-name column.
-#   sci_name_col  name of that column (cleaned with janitor internally, so
-#                 "Scientific Name" and "scientific_name" both work).
-#   taxon_group   optional label ("bird"/"mammal"/"reptile"/...) stamped on every
-#                 row. Pass it when you already know the group; leave NULL to
-#                 derive from GBIF class. Recommended for reptiles (GBIF class
-#                 Squamata/Testudines rather than "Reptilia").
-#   verify        run gna_verifier cross-check on non-birds (TRUE).
-#   batch_size    gna_verifier batch size (the API dislikes huge calls).
+### ---------------------------------------------------------------------------
+### resolve_species_names()
+### ---------------------------------------------------------------------------
+### Args:
+###   spp_df        data frame containing a scientific-name column.
+###   sci_name_col  name of that column (cleaned with janitor internally, so
+###                 "Scientific Name" and "scientific_name" both work).
+###   taxon_group   optional label ("bird"/"mammal"/"reptile"/...) stamped on every
+###                 row. Pass it when you already know the group; leave NULL to
+###                 derive from GBIF class. Recommended for reptiles (GBIF class
+###                 Squamata/Testudines rather than "Reptilia").
+###   verify        run gna_verifier cross-check on non-birds (TRUE).
+###   batch_size    gna_verifier batch size (the API dislikes huge calls).
 #
-# Returns a tibble leading with the name columns:
-#   name_input, name_accepted, name_gbif, gbif_usage_key, ebird_code, ebird_name,
-#   common_name, class, taxon_group, gbif_status, match_type, verifier_status,
-#   verifier_source, name_changed, needs_review, review_reason
+### Returns a tibble leading with the name columns:
+###   name_input, name_accepted, name_gbif, gbif_usage_key, ebird_code, ebird_name,
+###   common_name, class, taxon_group, gbif_status, match_type, verifier_status,
+###   verifier_source, name_changed, needs_review, review_reason
 resolve_species_names <- function(
   spp_df,
   sci_name_col = "scientific_name",
@@ -204,7 +204,7 @@ resolve_species_names <- function(
     stop("No non-empty scientific names found in input.")
   }
 
-  # 1. Parse: flag malformed / non-binomial names ------------------------------
+  ### 1. Parse: flag malformed / non-binomial names ------------------------------
   parsed <- taxize::gna_parse(names_in)
   parse_ok <- parsed |>
     dplyr::transmute(
@@ -213,15 +213,15 @@ resolve_species_names <- function(
     ) |>
     dplyr::distinct(sci_name_input, .keep_all = TRUE)
 
-  # 2. GBIF backbone: authoritative accepted name + key ------------------------
+  ### 2. GBIF backbone: authoritative accepted name + key ------------------------
   gbif <- rgbif::name_backbone_checklist(names_in) |>
     dplyr::transmute(
       sci_name_input = verbatim_name,
       sci_name_gbif = species,             # ACCEPTED binomial
       gbif_scientific_name = scientificName,
-      # speciesKey ONLY -- never fall back to usageKey. A HIGHERRANK match (genus
-      # only) has no speciesKey; falling back to the genus usageKey would let the
-      # eBird key-join attach an arbitrary congener. NA keeps such rows honest.
+      ### speciesKey ONLY -- never fall back to usageKey. A HIGHERRANK match (genus
+      ### only) has no speciesKey; falling back to the genus usageKey would let the
+      ### eBird key-join attach an arbitrary congener. NA keeps such rows honest.
       gbif_usage_key = speciesKey,
       gbif_status = status,
       match_type = matchType,
@@ -240,7 +240,7 @@ resolve_species_names <- function(
 
   is_bird <- gbif$class == "Aves" & !is.na(gbif$class)
 
-  # 3. gna_verifier cross-check on NON-BIRDS (batched) -------------------------
+  ### 3. gna_verifier cross-check on NON-BIRDS (batched) -------------------------
   verifier <- tibble::tibble(
     sci_name_input = character(),
     verifier_status = character(),
@@ -274,7 +274,7 @@ resolve_species_names <- function(
     }
   }
 
-  # 4. eBird: attach the CURRENT name/code by joining on the GBIF key ----------
+  ### 4. eBird: attach the CURRENT name/code by joining on the GBIF key ----------
   is_bird <- gbif$class == "Aves" & !is.na(gbif$class)
   if (any(is_bird)) {
     emap <- ebird_gbif_map(cache_path = ebird_cache, rebuild = rebuild_ebird_cache) |>
@@ -288,7 +288,7 @@ resolve_species_names <- function(
     )
   }
 
-  # 5. Assemble the unified crosswalk ------------------------------------------
+  ### 5. Assemble the unified crosswalk ------------------------------------------
   crosswalk <- gbif |>
     dplyr::mutate(gbif_usage_key = as.numeric(gbif_usage_key)) |>
     dplyr::left_join(parse_ok, by = "sci_name_input") |>
@@ -305,7 +305,7 @@ resolve_species_names <- function(
         (name_accepted != sci_name_input | gbif_status == "SYNONYM")
     )
 
-  # 6. Flag rows a human should check before trusting --------------------------
+  ### 6. Flag rows a human should check before trusting --------------------------
   crosswalk <- crosswalk |>
     dplyr::mutate(
       review_reason = purrr::pmap_chr(
@@ -344,6 +344,6 @@ resolve_species_names <- function(
       review_reason
     )
 
-  # 7. Fold in any hand-curated fixes (re-applied every run, never lost) -------
+  ### 7. Fold in any hand-curated fixes (re-applied every run, never lost) -------
   apply_name_overrides(crosswalk, overrides)
 }

@@ -1,18 +1,18 @@
-# =============================================================================
-# R/04_indicators/greedy_setcover_fn.R  —  greedy weighted set-cover (functions)
-# =============================================================================
+### =============================================================================
+### R/04_indicators/greedy_setcover_fn.R  —  greedy weighted set-cover (functions)
+### =============================================================================
 #
-# Pick a minimal set of hex cells that brings every undersampled species up to
-# its sampling target, with a conservation-area balance adjustment. Consumes the
-# undersamp_cells / undersamp_spp outputs of find_optimal_sampling_locs.
+### Pick a minimal set of hex cells that brings every undersampled species up to
+### its sampling target, with a conservation-area balance adjustment. Consumes the
+### undersamp_cells / undersamp_spp outputs of find_optimal_sampling_locs.
 #
-# Reworked from run_greedy_randomized_fn.R (renamed: the algorithm is
-# deterministic greedy, not randomized). The three tuning knobs now come from
-# sampling_params; the conservation flag is derived inline from the hex grid +
-# conservation cells (no separate ca_h3_grid_w_cons file). The un-parameterized
-# third copy (99_utilities/run_greedy_randomized.R) is dropped.
+### Reworked from run_greedy_randomized_fn.R (renamed: the algorithm is
+### deterministic greedy, not randomized). The three tuning knobs now come from
+### sampling_params; the conservation flag is derived inline from the hex grid +
+### conservation cells (no separate ca_h3_grid_w_cons file). The un-parameterized
+### third copy (99_utilities/run_greedy_randomized.R) is dropped.
 #
-# Requires config + sampling_config + R/00_utils.R.
+### Requires config + sampling_config + R/00_utils.R.
 
 suppressPackageStartupMessages({
   library(data.table)
@@ -24,7 +24,7 @@ suppressPackageStartupMessages({
   library(here)
 })
 
-# Resolve the taxa a run covers ("combined" spans all configured taxa).
+### Resolve the taxa a run covers ("combined" spans all configured taxa).
 resolve_greedy_taxa <- function(taxon, cfg = config) {
   if (identical(taxon, "combined")) return(cfg$taxa)
   if (!taxon %in% cfg$taxa) stop(glue("taxon must be one of {toString(cfg$taxa)}, or 'combined'."))
@@ -43,7 +43,7 @@ build_greedy_output_dir <- function(year, taxon, cfg = config, taxa_resolved = N
   ensure_dir(out_dir)
 }
 
-# Region hex grid annotated with a 0/1 cons_area flag.
+### Region hex grid annotated with a 0/1 cons_area flag.
 .hex_grid_with_cons <- function(cfg = config) {
   grid <- sf::st_read(cfg$paths$hex_grid, quiet = TRUE)
   cons_ids <- sf::st_read(cfg$paths$cons_areas_hex, quiet = TRUE)$h3_index
@@ -61,7 +61,7 @@ greedy_setcover <- function(year, taxon, cfg = config, params = sampling_params)
 
   output_dir <- build_greedy_output_dir(year, taxon, cfg, taxa)
 
-  # Stack candidate cells, species deficits, and range cells across taxa.
+  ### Stack candidate cells, species deficits, and range cells across taxa.
   updated_ranges <- rbindlist(lapply(taxa, function(t) {
     dt <- as.data.table(read_parquet(samp[[t]]$undersamp_cells_out)); dt[, taxon := t]; dt
   }))
@@ -82,13 +82,13 @@ greedy_setcover <- function(year, taxon, cfg = config, params = sampling_params)
     warning("Species in multiple taxa: ", paste(dup_spp, collapse = ", "))
   }
 
-  # Sparse candidate edge list (cell-species pairs), with cons flag.
+  ### Sparse candidate edge list (cell-species pairs), with cons flag.
   edges <- as.data.table(updated_ranges)[pres_abs == 1, .(h3_index, species)]
   rm(updated_ranges)
   edges <- merge(edges, cons_lookup, by = "h3_index", all.x = TRUE)
   edges[is.na(cons_area), cons_area := 0L]
 
-  # Per-species conservation fraction of full range (for the balance target).
+  ### Per-species conservation fraction of full range (for the balance target).
   zm_long <- merge(range_cells_long, cons_lookup, by = "h3_index", all.x = TRUE)
   zm_long[is.na(cons_area), cons_area := 0L]
   cons_target <- zm_long[, .(cons_frac_range = sum(cons_area) / .N), by = species]

@@ -1,15 +1,15 @@
-# =============================================================================
-# R/04_indicators/find_sampled_cells_fn.R  —  sampled-cell summaries (functions)
-# =============================================================================
+### =============================================================================
+### R/04_indicators/find_sampled_cells_fn.R  —  sampled-cell summaries (functions)
+### =============================================================================
 #
-# For each species: how many of its range cells are sampled, how many of those
-# fall inside conservation areas, and in/out-of-range observation counts.
+### For each species: how many of its range cells are sampled, how many of those
+### fall inside conservation areas, and in/out-of-range observation counts.
 #
-# Reworked from find_sampled_cells_fn.R: the 57-line commented-out earlier copy
-# is gone; everything keys off the canonical `h3_index` column; the threshold
-# comes from sampling_params (one definition, one operator).
+### Reworked from find_sampled_cells_fn.R: the 57-line commented-out earlier copy
+### is gone; everything keys off the canonical `h3_index` column; the threshold
+### comes from sampling_params (one definition, one operator).
 #
-# Requires config + sampling_config + R/00_utils.R.
+### Requires config + sampling_config + R/00_utils.R.
 
 suppressPackageStartupMessages({
   library(arrow)
@@ -20,8 +20,8 @@ suppressPackageStartupMessages({
   library(here)
 })
 
-# One species file -> one-row summary. `cell_list` is the wide range-cell table
-# (h3_index + one 0/1 column per species).
+### One species file -> one-row summary. `cell_list` is the wide range-cell table
+### (h3_index + one 0/1 column per species).
 find_sampled_cells_one <- function(file_path, year, cons_ids, well_samp_cells, cell_list) {
   spp_df <- arrow::read_parquet(file_path,
                                 col_select = c("h3_index", "species", "tot_obs"))
@@ -56,7 +56,7 @@ find_sampled_cells_one <- function(file_path, year, cons_ids, well_samp_cells, c
     )
 }
 
-# Full workflow for one taxon-year.
+### Full workflow for one taxon-year.
 run_find_sampled_cells <- function(taxon, year, cfg = config,
                                    params = sampling_params, write_output = TRUE) {
   samp_cfg <- make_sampling_config(year, cfg = cfg)[[taxon]]
