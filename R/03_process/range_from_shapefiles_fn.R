@@ -1,19 +1,19 @@
 ### =============================================================================
 ### R/03_process/range_from_shapefiles_fn.R  —  CANONICAL range step (functions)
 ### =============================================================================
-#
+###
 ### Turn per-species range shapefiles into a wide table of H3 range cells:
 ### one row per hex cell, one 0/1 column per species (keyed by the GBIF canonical
 ### name), plus per-species totals overall and within conservation areas.
-#
+###
 ### Reworked from get_hex_grid_from_shape.R, which overwrote its shapefile list
 ### three times (so only mammals ever ran) and hardcoded the mammal output path.
 ### Here it is a function of `taxon`, looped by the _run driver.
-#
+###
 ### The species identity comes from the crosswalk, not the raw shapefile: each
 ### shapefile's name field (SName) was matched to name_gbif in Stage 0, so range
 ### cells and occurrence/richness data share ONE canonical key and join cleanly.
-#
+###
 ### Requires config + taxa_config + R/00_utils.R.
 
 suppressPackageStartupMessages({

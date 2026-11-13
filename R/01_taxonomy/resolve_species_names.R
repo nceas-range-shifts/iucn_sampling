@@ -1,10 +1,10 @@
 ### =============================================================================
 ### R/01_taxonomy/resolve_species_names.R  —  the taxonomy engine
 ### =============================================================================
-#
+###
 ### One function to turn a raw input species list into a clean, non-destructive
 ### crosswalk that every downstream stage joins on.
-#
+###
 ### Engine (in order):
 ###   1. gna_parse    - flag malformed / non-binomial names before we trust them.
 ###   2. GBIF backbone (name_backbone_checklist) - AUTHORITATIVE. Resolves synonyms
@@ -15,10 +15,10 @@
 ###   4. eBird        - attach the current speciesCode by joining on the GBIF
 ###      ACCEPTED key (not the verbatim name). Rescues renamed birds (Chen ->
 ###      Anser, Picoides -> Dryobates, Anas -> Spatula/Mareca, ...).
-#
+###
 ### Output: ONE tidy tibble, one row per submitted name, birds and non-birds
 ### together, with a stable schema (see the return docs on resolve_species_names).
-#
+###
 ### The shapefile linkage (range_shapefile_name) is added on TOP of this output by
 ### build_species_crosswalk.R, reusing the same GBIF-key bridge.
 
@@ -61,7 +61,7 @@ suppressPackageStartupMessages({
 ### once and key it to the GBIF ACCEPTED speciesKey. Any GBIF-resolved name
 ### (Puffinus griseus, key 5739277) then joins to eBird's current name (Ardenna
 ### grisea, same key) on that shared key.
-#
+###
 ### Resolving the full eBird taxonomy (~11k species) takes ~40s, so the result is
 ### cached. Pass rebuild = TRUE to refresh, or cache_path = NULL to skip caching.
 ebird_gbif_map <- function(cache_path = .default_ebird_cache, rebuild = FALSE) {
@@ -103,7 +103,7 @@ ebird_gbif_map <- function(cache_path = .default_ebird_cache, rebuild = FALSE) {
 ### newer taxonomy than the GBIF backbone). Rather than hand-edit the generated
 ### crosswalk (a rebuild would clobber it), record fixes ONCE in a version-
 ### controlled CSV and re-apply them every run.
-#
+###
 ### The overrides CSV must have a `name_input` column (the join key) plus any of:
 ###   name_accepted, name_gbif, gbif_usage_key, ebird_code, ebird_name, common_name
 ### Only the columns you fill are overridden. Any listed row is treated as
@@ -173,7 +173,7 @@ apply_name_overrides <- function(crosswalk, overrides_path = .default_overrides)
 ###                 Squamata/Testudines rather than "Reptilia").
 ###   verify        run gna_verifier cross-check on non-birds (TRUE).
 ###   batch_size    gna_verifier batch size (the API dislikes huge calls).
-#
+###
 ### Returns a tibble leading with the name columns:
 ###   name_input, name_accepted, name_gbif, gbif_usage_key, ebird_code, ebird_name,
 ###   common_name, class, taxon_group, gbif_status, match_type, verifier_status,
@@ -217,7 +217,7 @@ resolve_species_names <- function(
   gbif <- rgbif::name_backbone_checklist(names_in) |>
     dplyr::transmute(
       sci_name_input = verbatim_name,
-      sci_name_gbif = species,             # ACCEPTED binomial
+      sci_name_gbif = species,             ### ACCEPTED binomial
       gbif_scientific_name = scientificName,
       ### speciesKey ONLY -- never fall back to usageKey. A HIGHERRANK match (genus
       ### only) has no speciesKey; falling back to the genus usageKey would let the

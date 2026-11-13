@@ -1,20 +1,20 @@
 ### =============================================================================
 ### R/04_indicators/find_optimal_sampling_locs_fn.R  —  undersampled spp + cells
 ### =============================================================================
-#
+###
 ### Identify species whose regional range is sampled below target_sampling_frac,
 ### and list candidate hex cells where extra sampling would close the gap. These
 ### are the inputs the greedy set-cover consumes.
-#
+###
 ### Outputs (per taxon-year, via sampling_config):
 ###   undersamp_cells_out (parquet): h3_index, species, pres_abs (1 = candidate)
 ###   undersamp_spp_out   (csv)    : species, cells, n, frac_sampled, cells_needed
-#
+###
 ### Reworked from find_optimal_sampling_locs.R: a function of (taxon, year) instead
 ### of a 384-line monolith reading globals; the ~220 dead commented lines and the
 ### stop()-references-undefined-`richness_gpkg` bug are gone; the well-sampled and
 ### conservation flags are derived inline (no separate annotated-grid file).
-#
+###
 ### Requires config + sampling_config + R/00_utils.R.
 
 suppressPackageStartupMessages({

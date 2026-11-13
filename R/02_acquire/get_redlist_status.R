@@ -1,14 +1,14 @@
 ### =============================================================================
 ### R/02_acquire/get_redlist_status.R  —  IUCN Red List status (OPTIONAL)
 ### =============================================================================
-#
+###
 ### Look up each species' IUCN Red List category. Optional: only needed if you use
 ### conservation status in downstream summaries.
-#
+###
 ### API-gated: needs config$credentials$iucn_redlist_key (default: IUCN_REDLIST_KEY
 ### from .Renviron). Reads species from the master
 ### crosswalk (name_gbif), keyed off the canonical name — not a hand-edited path.
-#
+###
 ### Requires config + R/00_utils.R + a built crosswalk.  Usage: run_redlist_status()
 
 suppressPackageStartupMessages({

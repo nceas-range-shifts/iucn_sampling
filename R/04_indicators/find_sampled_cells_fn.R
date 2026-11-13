@@ -1,14 +1,14 @@
 ### =============================================================================
 ### R/04_indicators/find_sampled_cells_fn.R  —  sampled-cell summaries (functions)
 ### =============================================================================
-#
+###
 ### For each species: how many of its range cells are sampled, how many of those
 ### fall inside conservation areas, and in/out-of-range observation counts.
-#
+###
 ### Reworked from find_sampled_cells_fn.R: the 57-line commented-out earlier copy
 ### is gone; everything keys off the canonical `h3_index` column; the threshold
 ### comes from sampling_params (one definition, one operator).
-#
+###
 ### Requires config + sampling_config + R/00_utils.R.
 
 suppressPackageStartupMessages({

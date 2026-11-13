@@ -1,19 +1,19 @@
 ### =============================================================================
 ### R/run_pipeline.R  —  master driver
 ### =============================================================================
-#
+###
 ### Sources the config + every stage and runs them in order:
 ###   Stage 0  taxonomy   -> data/processed/species_crosswalk.csv
 ###   Stage 1  acquire    -> raw GBIF / eBird / IUCN            (API-gated)
 ###   Stage 2  process    -> hex grid, parsed+cleaned occs, range cells, richness
 ###   Stage 3  indicators -> sampled cells, undersampled spp, greedy sampling plan
-#
+###
 ### Two entry points:
 ###   run_pipeline()               full run on YOUR data (needs API keys + inputs)
 ###   run_pipeline(sample = TRUE)  offline run on the committed sample dataset
 ###                                (reptiles + mammals; no API calls). Run
 ###                                data/sample/make_sample_data.R first.
-#
+###
 ### Open case-study-template.Rproj (sets the working directory) before sourcing.
 
 library(here)

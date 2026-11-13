@@ -1,16 +1,16 @@
 ### =============================================================================
 ### R/03_process/parse_gbif.R  —  subset raw GBIF into per-species-year parquet
 ### =============================================================================
-#
+###
 ### Reads each taxon's raw GBIF occurrence dataset and writes one parquet file per
 ### species-year under data/processed/species_populations/<taxon>/gbif/<year>/.
-#
+###
 ### Species come from the master crosswalk's `name_gbif` (the GBIF accepted
 ### binomial) — the single canonical name column — so the filter always matches
 ### GBIF's own `species` field regardless of taxon.
-#
+###
 ### Requires config + taxa_config + R/00_utils.R + a built crosswalk.
-#
+###
 ### Usage:  res <- run_gbif_parse()
 
 suppressPackageStartupMessages({

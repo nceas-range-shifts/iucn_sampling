@@ -1,17 +1,17 @@
 ### =============================================================================
 ### R/03_process/build_hex_grid.R  —  region H3 grid + conservation-area cells
 ### =============================================================================
-#
+###
 ### Produces the two shared spatial layers the rest of the pipeline joins on:
 ###   config$paths$hex_grid        — every H3 cell covering the study region
 ###   config$paths$cons_areas_hex  — the subset of cells inside conservation areas,
 ###                                  with managing-agency / GAP attributes.
-#
+###
 ### Reworked from get_hex_grid.R: region and resolution come from config; the
 ### conservation-layer field names are configurable; the bird eBird-raster zonal
 ### block (a range source, not a grid step) is moved to range_from_raster.R; and
 ### the mangled double-assignment bug at get_hex_grid.R:144-147 is dropped.
-#
+###
 ### Requires config + R/00_utils.R.  Usage:  build_hex_grid()
 
 suppressPackageStartupMessages({

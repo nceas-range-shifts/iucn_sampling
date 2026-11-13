@@ -1,17 +1,17 @@
 ### =============================================================================
 ### R/03_process/clean_gbif.R  —  clean + spatially thin GBIF occurrences
 ### =============================================================================
-#
+###
 ### For each per-species-year parquet from parse_gbif.R: run CoordinateCleaner,
 ### apply quality filters (thresholds from config$cleaning), diagnostic checks,
 ### and H3 thinning (one record per hex cell at config$hex_resolution). Writes
 ### `<species>_clean.parquet` next to the input and a per-taxon-year run log.
-#
+###
 ### Reworked from the original clean_gbif_occs.R: thresholds and CRS/resolution
 ### come from config; the ~13 hand-toggled input/output pairs are replaced by a
 ### loop over taxa x years; every species' outcome is recorded in a run log
 ### instead of a bare cat()/NULL.
-#
+###
 ### Requires config + R/00_utils.R.  Usage:  res <- run_clean_gbif()
 
 suppressPackageStartupMessages({

@@ -1,15 +1,15 @@
 ### =============================================================================
 ### R/03_process/range_from_raster_fn.R  —  raster range source (birds)
 ### =============================================================================
-#
+###
 ### Convert the eBird bird presence raster (from get_ebird_status.R) into the same
 ### per-species hex range-cell table the shapefile path produces, so downstream
 ### indicators treat all taxa identically.
-#
+###
 ### Reworked from the bird zonal block embedded in get_hex_grid.R (the mangled
 ### double-assignment there is dropped). Species are keyed by the GBIF canonical
 ### name (name_gbif) via the crosswalk, so range cells join to occurrence data.
-#
+###
 ### Requires config + taxa_config + sampling_config + R/00_utils.R.
 
 suppressPackageStartupMessages({

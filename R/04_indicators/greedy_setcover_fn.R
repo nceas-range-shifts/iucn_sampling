@@ -1,17 +1,17 @@
 ### =============================================================================
 ### R/04_indicators/greedy_setcover_fn.R  —  greedy weighted set-cover (functions)
 ### =============================================================================
-#
+###
 ### Pick a minimal set of hex cells that brings every undersampled species up to
 ### its sampling target, with a conservation-area balance adjustment. Consumes the
 ### undersamp_cells / undersamp_spp outputs of find_optimal_sampling_locs.
-#
+###
 ### Reworked from run_greedy_randomized_fn.R (renamed: the algorithm is
 ### deterministic greedy, not randomized). The three tuning knobs now come from
 ### sampling_params; the conservation flag is derived inline from the hex grid +
 ### conservation cells (no separate ca_h3_grid_w_cons file). The un-parameterized
 ### third copy (99_utilities/run_greedy_randomized.R) is dropped.
-#
+###
 ### Requires config + sampling_config + R/00_utils.R.
 
 suppressPackageStartupMessages({

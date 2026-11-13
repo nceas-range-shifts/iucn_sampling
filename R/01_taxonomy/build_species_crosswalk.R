@@ -1,10 +1,10 @@
 ### =============================================================================
 ### R/01_taxonomy/build_species_crosswalk.R  —  STAGE 0 driver
 ### =============================================================================
-#
+###
 ### Turns each taxon's raw input species list into ONE authoritative crosswalk
 ### that every downstream stage joins on. Runs FIRST in the pipeline.
-#
+###
 ### What it adds beyond resolve_species_names():
 ###   - range_shapefile_name / range_shapefile_path for shapefile-range taxa.
 ###     Range shapefiles carry the vendor's own species name (the shapefile_name_
@@ -14,11 +14,11 @@
 ###     resolver already uses for eBird. This is the join key that lets range
 ###     cells (keyed by shapefile name) line up with occurrence/richness data
 ###     (keyed by GBIF canonical name).
-#
+###
 ### Output: data/processed/species_crosswalk.csv (one row per species, all taxa).
-#
+###
 ### Requires config/config.R + config/taxa_config.R sourced first.
-#
+###
 ### Usage:
 ###   source("config/config.R"); source("config/taxa_config.R")
 ###   source("R/00_utils.R")
@@ -120,7 +120,7 @@ build_taxon_crosswalk <- function(taxon, tcfg, cfg = config) {
   cw <- resolve_species_names(
     spp_df = raw,
     sci_name_col = tcfg$species_source$sci_name_col,
-    taxon_group = taxon           # stamp group so reptiles aren't left NA
+    taxon_group = taxon           ### stamp group so reptiles aren't left NA
   )
 
   if (identical(tcfg$range_source, "shapefile")) {

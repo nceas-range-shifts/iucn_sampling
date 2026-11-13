@@ -5,7 +5,7 @@
 ### range_source: "shapefile" -> range_from_shapefiles_fn.R,
 ###               "raster"    -> range_from_raster_fn.R (eBird birds).
 ### Both write the same range_grid_cells.parquet shape, so downstream is uniform.
-#
+###
 ### Requires config + taxa_config + sampling_config + R/00_utils.R.
 
 source(here::here("R", "03_process", "range_from_shapefiles_fn.R"))

@@ -1,17 +1,17 @@
 ### =============================================================================
 ### R/02_acquire/download_gbif.R  —  submit GBIF occurrence downloads
 ### =============================================================================
-#
+###
 ### Reads the master crosswalk built in Stage 0, takes each taxon's already-
 ### resolved GBIF usageKeys, and submits one filtered occurrence download per
 ### taxon. Name resolution does NOT happen here (that is Stage 0's job) — this
 ### script only downloads.
-#
+###
 ### API-gated: needs GBIF credentials in config$credentials (default: read from
 ### .Renviron GBIF_USER/GBIF_PWD/GBIF_EMAIL).
-#
+###
 ### Requires config + taxa_config + R/00_utils.R sourced first.
-#
+###
 ### Usage:
 ###   res <- run_gbif_downloads()                 # all configured taxa
 ###   res <- run_gbif_downloads(taxa = "reptile", year_range = c(2014, 2015))

@@ -1,15 +1,15 @@
 ### =============================================================================
 ### R/_pre_analysis/extract_names_iucn.R
 ### =============================================================================
-#
+###
 ### Extract scientific names (binomial nomenclature) from IUCN spatial data.
-#
+###
 ### - Finds all geopackages/shapefiles/geodatabases in data/raw/iucn_2026/
 ### - Reads the spatial data attributes (no geometry needed)
 ### - Extracts the scientific name field (typically `sci_name`) and metadata
 ### - Adds a `taxon` column based on the folder name (e.g., "mammals_marine")
 ### - Returns a deduplicated species list per taxon with IUCN metadata
-#
+###
 ### Output: A tibble with columns:
 ###   - taxon: folder name (e.g., "mammals_marine", "mammals_mar_terr")
 ###   - scientific_name: binomial nomenclature from `sci_name` attribute
@@ -20,7 +20,7 @@
 ###   - yrcompiled: year the range was compiled
 ###   - assessment_id: IUCN assessment ID
 ###   - id_no: IUCN species ID number
-#
+###
 ### Usage:
 ###   species_from_iucn <- extract_iucn_species()
 ###   head(species_from_iucn)

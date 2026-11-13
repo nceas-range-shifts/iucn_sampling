@@ -1,7 +1,7 @@
 ### =============================================================================
 ### R/00_utils.R  —  small shared helpers used across pipeline stages
 ### =============================================================================
-#
+###
 ### The original project re-implemented these in several scripts (ensure_dir /
 ### dir.create in gbif_download_core, gbif_parse_core, clean_gbif_occs,
 ### parse_gbif_occs; remove_empty_files and standardize_species_name twice each).

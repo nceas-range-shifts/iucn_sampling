@@ -1,33 +1,33 @@
-# =============================================================================
-# config/taxa_config.R  —  per-taxon settings
-# =============================================================================
-#
-# One entry per taxon. Downstream code never hardcodes "bird"/"reptile"/"mammal"
-# or a per-taxon path — it loops over `names(taxa_config)` and reads from here.
-#
-# Requires config/config.R to be sourced first (uses `config`).
-#
-# Each taxon defines:
-#   species_source        where the raw species list comes from (CSV or Google
-#                         Sheet) and which column holds the scientific name.
-#   range_source          "shapefile" -> ranges come from per-species range
-#                         shapefiles (reptiles, mammals, marine mammals).
-#                         "raster"    -> ranges come from an eBird Status &
-#                         Trends abundance raster (birds).
-#   shapefile_dir         (shapefile taxa) folder of per-species range shapefiles.
-#   shapefile_name_field  (shapefile taxa) attribute holding the species name in
-#                         each shapefile (the source's own taxonomy; Stage 0
-#                         resolves it to the GBIF key so it can be joined).
-#   obis_dataset_path     (marine taxa) path to OBIS occurrence dataset (parquet).
-#   gbif_dataset_path     raw GBIF/OBIS occurrence dataset (parquet) for this taxon,
-#                         parsed into per-species-year files in 03_process.
+### =============================================================================
+### config/taxa_config.R  —  per-taxon settings
+### =============================================================================
+###
+### One entry per taxon. Downstream code never hardcodes "bird"/"reptile"/"mammal"
+### or a per-taxon path — it loops over `names(taxa_config)` and reads from here.
+###
+### Requires config/config.R to be sourced first (uses `config`).
+###
+### Each taxon defines:
+###   species_source        where the raw species list comes from (CSV or Google
+###                         Sheet) and which column holds the scientific name.
+###   range_source          "shapefile" -> ranges come from per-species range
+###                         shapefiles (reptiles, mammals, marine mammals).
+###                         "raster"    -> ranges come from an eBird Status &
+###                         Trends abundance raster (birds).
+###   shapefile_dir         (shapefile taxa) folder of per-species range shapefiles.
+###   shapefile_name_field  (shapefile taxa) attribute holding the species name in
+###                         each shapefile (the source's own taxonomy; Stage 0
+###                         resolves it to the GBIF key so it can be joined).
+###   obis_dataset_path     (marine taxa) path to OBIS occurrence dataset (parquet).
+###   gbif_dataset_path     raw GBIF/OBIS occurrence dataset (parquet) for this taxon,
+###                         parsed into per-species-year files in 03_process.
 
 library(here)
 
-# Columns kept from raw GBIF when parsing. Defined ONCE and shared by every
-# taxon so a per-taxon list can't silently drop a column the cleaning step needs
-# (the original mammal config dropped basisOfRecord/individualCount, which
-# clean_gbif then filtered on — a real bug this shared list prevents).
+### Columns kept from raw GBIF when parsing. Defined ONCE and shared by every
+### taxon so a per-taxon list can't silently drop a column the cleaning step needs
+### (the original mammal config dropped basisOfRecord/individualCount, which
+### clean_gbif then filtered on — a real bug this shared list prevents).
 gbif_columns_keep <- c(
   "gbifID", "datasetKey", "occurrenceID",
   "family", "genus", "species", "scientificName",
