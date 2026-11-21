@@ -88,8 +88,8 @@ taxon_slug <- function(taxon) tolower(taxon)
 ### Starting in version 3.9, rgbif defaults to Catalog of Life
 ### taxonomic key - alphanumeric speciesKey.  Ensure that user has at least 
 ### this version number.
-check_rgbif_version <- function() {
-  if (packageVersion("rgbif") < "3.9") {
-    stop('Requires rgbif package version >= 3.9 for alphanumeric speciesKey')
+check_package_version <- function(pkg = 'rgbif', min_ver = '3.9') {
+  if (!requireNamespace(pkg, quietly = TRUE) || packageVersion(pkg) < min_ver) {
+    stop('Requires {pkg} package version >= {min_ver}...')
   }
 }

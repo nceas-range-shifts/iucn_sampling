@@ -20,6 +20,10 @@
 ###   the link records the file path, the layer within it, and the species name.
 ###   Rows of a layer are later selected by matching the name field.
 ###
+###   - aphia_id (+ aphia_id_matched, worms_name, worms_status, worms_n_matches)
+###     for taxa with an obis_dataset_path: the accepted WoRMS AphiaID, OBIS's
+###     taxon key, matched exactly by name. NA for non-marine taxa or no match.
+###
 ### Output: data/processed/species_crosswalk.csv (one row per species, all taxa).
 ###
 ### Requires config/config.R + config/taxa_config.R sourced first.
@@ -175,12 +179,72 @@ attach_polygon_link <- function(crosswalk, polygon_names) {
     dplyr::left_join(link, by = "gbif_usage_key")
 }
 
+### Add WoRMS AphiaIDs (OBIS's taxon key) to a crosswalk. Names are matched
+### exactly (no fuzzy matching) on name_gbif, falling back to name_accepted.
+### aphia_id is the ACCEPTED (valid) AphiaID, so synonyms resolve to the same id
+### OBIS stores; aphia_id_matched keeps the id of the name as matched, and
+### worms_status records the match outcome ("no match" -> aphia_id is NA).
+attach_worms_aphia <- function(crosswalk, taxon, chunk_size = 50,
+                               progress = c("terse", "verbose", "quiet")) {
+  progress <- match.arg(progress)
+  query <- dplyr::coalesce(crosswalk$name_gbif, crosswalk$name_accepted)
+  uniq <- unique(stats::na.omit(query))
+
+  chunks <- split(uniq, ceiling(seq_along(uniq) / chunk_size))
+  worms <- purrr::imap_dfr(chunks, function(nms, i) {
+    .progress_msg(progress, "verbose",
+                  glue("    [{taxon}] WoRMS chunk {i}/{length(chunks)} ({length(nms)} names)"))
+    res <- tryCatch(
+      worrms::wm_records_names(nms, marine_only = FALSE),
+      error = function(e) {
+        warning(glue("WoRMS lookup failed for {length(nms)} names: {conditionMessage(e)}"),
+                call. = FALSE)
+        NULL
+      }
+    )
+    if (is.null(res)) return(NULL)
+    purrr::map2_dfr(nms, res, function(nm, df) {
+      if (nrow(df) == 0) return(NULL)
+      ### Several records can share a name (homonyms): prefer accepted, then first.
+      df |>
+        dplyr::arrange(status != "accepted") |>
+        dplyr::slice(1) |>
+        dplyr::transmute(
+          query_name = nm,
+          aphia_id_matched = as.integer(AphiaID),
+          aphia_id = as.integer(valid_AphiaID),
+          worms_name = valid_name,
+          worms_status = status,
+          worms_n_matches = nrow(df)
+        )
+    })
+  })
+
+  out <- crosswalk |>
+    dplyr::mutate(.query_name = query) |>
+    dplyr::left_join(worms, by = c(".query_name" = "query_name")) |>
+    dplyr::select(-.query_name) |>
+    dplyr::mutate(worms_status = dplyr::coalesce(worms_status, "no match"))
+
+  n_miss <- sum(is.na(out$aphia_id))
+  .progress_msg(progress, "terse",
+                glue("[crosswalk] WoRMS: {nrow(out) - n_miss}/{nrow(out)} {taxon} names matched ",
+                     "to an AphiaID ({n_miss} NA)"))
+  out
+}
+
 ### Build one taxon's crosswalk (names resolved + polygon linkage where used).
-build_taxon_crosswalk <- function(taxon, tcfg, cfg = config, force = config$force) {
+build_taxon_crosswalk <- function(taxon, tcfg, cfg = config, force = config$force,
+                                  progress = c("terse", "verbose", "quiet"),
+                                  raw = NULL) {
+  progress <- match.arg(progress)
   ### for new alphanumeric speciesKey taxonomic keys from Catalog of Life
-  check_rgbif_version()
-  
-  raw <- load_species_list(taxon, tcfg)
+  check_package_version('rgbif', '3.9')
+
+  .progress_msg(progress, "terse", glue("[crosswalk] {taxon}: resolving species names"))
+  ### `raw` is passed in when the caller already loaded the list (for the cache hash).
+  if (is.null(raw)) raw <- load_species_list(taxon, tcfg)
+  .progress_msg(progress, "verbose", glue("    [{taxon}] {nrow(raw)} species in input list"))
 
   cw <- resolve_species_names(
     spp_df = raw,
@@ -189,9 +253,22 @@ build_taxon_crosswalk <- function(taxon, tcfg, cfg = config, force = config$forc
     rebuild_ebird_cache = isTRUE(force)
   )
 
+  ### Report GBIF backbone match rate (mirrors the WoRMS message).
+  n_gbif_miss <- sum(is.na(cw$gbif_usage_key))
+  .progress_msg(progress, "terse",
+                glue("[crosswalk] GBIF: {nrow(cw) - n_gbif_miss}/{nrow(cw)} {taxon} names matched ",
+                     "to a GBIF usage key ({n_gbif_miss} NA)"))
+
   if (is_polygon_source(tcfg$range_source)) {
+    .progress_msg(progress, "verbose", glue("    [{taxon}] harvesting range polygon names"))
     polygon_names <- harvest_polygon_names(tcfg$polygon_dir, tcfg$polygon_name_field)
+    .progress_msg(progress, "verbose",
+                  glue("    [{taxon}] {nrow(polygon_names)} polygon name/layer records found"))
     cw <- attach_polygon_link(cw, polygon_names)
+    n_poly_miss <- sum(is.na(cw$range_polygon_name))
+    .progress_msg(progress, "terse",
+                  glue("[crosswalk] Polygons: {nrow(cw) - n_poly_miss}/{nrow(cw)} {taxon} species ",
+                       "linked to a range polygon ({n_poly_miss} NA)"))
 
     ### Flag species whose range polygon we could not match -> review.
     cw <- cw |>
@@ -211,16 +288,31 @@ build_taxon_crosswalk <- function(taxon, tcfg, cfg = config, force = config$forc
                         range_polygon_n_features = NA_integer_)
   }
 
+  ### Marine taxa (those with an obis_dataset_path) also get WoRMS AphiaIDs. Other
+  ### taxa carry NA columns (not applicable) so the crosswalk stays rectangular.
+  if (!is.null(tcfg$obis_dataset_path)) {
+    cw <- attach_worms_aphia(cw, taxon, progress = progress)
+  } else {
+    cw <- dplyr::mutate(cw,
+                        aphia_id_matched = NA_integer_, aphia_id = NA_integer_,
+                        worms_name = NA_character_, worms_status = NA_character_,
+                        worms_n_matches = NA_integer_)
+  }
+
   dplyr::mutate(cw, taxon = taxon, .before = 1)
 }
 
 ### Build the master crosswalk across all configured taxa and write it once.
 ### `force = TRUE` also refreshes the cached eBird-to-GBIF key map.
+### `progress`: "terse" (default; per-taxon GBIF/polygon/WoRMS match counts),
+### "verbose" (adds input sizes and WoRMS chunk progress), or "quiet".
 build_species_crosswalk <- function(taxa = config$taxa,
                                     taxa_cfg = taxa_config,
                                     cfg = config,
                                     write = TRUE,
-                                    force = config$force) {
+                                    force = config$force,
+                                    progress = c("terse", "verbose", "quiet")) {
+  progress <- match.arg(progress)
   ### test to warn if config and taxa_config don't match for all taxa!
   all_missed <- c(setdiff(taxa, names(taxa_config)), setdiff(names(taxa_config), taxa))
   if(length(all_missed) != 0) {
@@ -229,21 +321,65 @@ build_species_crosswalk <- function(taxa = config$taxa,
             '\n  Taxa in taxa_config: ', paste0(names(taxa_cfg), collapse = ', '))
   }
   
-  crosswalk <- purrr::map_dfr(taxa, function(taxon) {
+  ### Load every raw species list once; they feed both the cache hash and the build.
+  raw_lists <- purrr::map(rlang::set_names(taxa), function(taxon) {
     tcfg <- taxa_cfg[[taxon]]
     if (is.null(tcfg)) stop(glue("Taxon '{taxon}' not found in taxa_config."))
-    build_taxon_crosswalk(taxon, tcfg, cfg, force = force)
+    load_species_list(taxon, tcfg)
+  })
+
+  ### --- Cache check ---------------------------------------------------------
+  ### Settings hash covers the species list CONTENT (sheets can change in place),
+  ### each taxon's config, polygon file checksums, package versions and the code of
+  ### the functions that build the crosswalk. It does NOT cover upstream changes
+  ### (GBIF/WoRMS/eBird backbones); use force = TRUE to re-query those.
+  out <- cfg$paths$crosswalk
+  mpath <- file.path(dirname(out), "species_crosswalk_manifest.json")
+  polygon_files <- sort(unlist(purrr::map(taxa, function(taxon) {
+    tcfg <- taxa_cfg[[taxon]]
+    if (is_polygon_source(tcfg$range_source) && !is.null(tcfg$polygon_dir) &&
+        dir.exists(tcfg$polygon_dir)) {
+      list.files(tcfg$polygon_dir, pattern = "\\.(shp|gpkg)$",
+                 full.names = TRUE, recursive = TRUE)
+    }
+  })))
+  fns <- c("build_species_crosswalk", "build_taxon_crosswalk", "load_species_list",
+           "harvest_polygon_names", ".layer_polygon_names", "attach_polygon_link",
+           "attach_worms_aphia", "resolve_species_names")
+  settings <- rlang::hash(list(
+    taxa     = taxa,
+    species  = raw_lists,
+    taxa_cfg = taxa_cfg[taxa],
+    polygons = unname(tools::md5sum(polygon_files)),
+    packages = lapply(c("rgbif", "worrms"), function(p) as.character(utils::packageVersion(p))),
+    code     = lapply(fns, function(f) deparse(get(f, envir = globalenv())))
+  ))
+
+  if (isTRUE(write) && .stage_cached(mpath, settings, out, force)) {
+    .progress_msg(progress, "terse",
+                  glue("[crosswalk] CACHED (inputs unchanged; force = TRUE to rebuild): {out}"))
+    ### gbif_usage_key is alphanumeric (e.g. "5384V"); keep it character.
+    return(invisible(readr::read_csv(
+      out, show_col_types = FALSE,
+      col_types = readr::cols(gbif_usage_key = readr::col_character(),
+                              .default = readr::col_guess()))))
+  }
+
+  crosswalk <- purrr::map_dfr(taxa, function(taxon) {
+    build_taxon_crosswalk(taxon, taxa_cfg[[taxon]], cfg, force = force,
+                          progress = progress, raw = raw_lists[[taxon]])
   })
 
   if (isTRUE(write)) {
-    out <- cfg$paths$crosswalk
     ensure_parent_dir(out)
     readr::write_csv(crosswalk, out)
-    message(glue(
+    ### Manifest last, so an interrupted run is never treated as cached.
+    .write_stage_manifest(mpath, settings, n_species = nrow(crosswalk))
+    .progress_msg(progress, "terse", glue(
       "[crosswalk] {nrow(crosswalk)} species across {length(taxa)} taxa -> {out} ",
       "({sum(crosswalk$needs_review)} flagged for review)"
     ))
   }
 
-  crosswalk
+  return(invisible(crosswalk))
 }

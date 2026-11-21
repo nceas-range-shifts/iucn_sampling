@@ -61,7 +61,7 @@ run_pipeline <- function(sample = FALSE) {
 
   message("== Stage 0: taxonomy ==")
       
-  build_species_crosswalk(force = TRUE)
+  build_species_crosswalk(force = config$force, progress = 'terse')
 
   message("== Stage 1: acquire (API-gated) ==")
   system.time({run_gbif_downloads(force = config$force)})
@@ -71,7 +71,7 @@ run_pipeline <- function(sample = FALSE) {
   system.time({
     ### Only taxa with an obis_dataset_path in taxa_config are fetched from OBIS.
     ### use_aws = TRUE attempts AWS S3 GeoParquet first (fast); falls back to API.
-    run_obis_downloads(force = config$force)
+    run_obis_downloads(force = TRUE, match_by = 'both')
   })
   
   message("== Stage 2: process ==")

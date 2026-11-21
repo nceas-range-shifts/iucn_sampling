@@ -323,7 +323,7 @@ run_gbif_downloads <- function(taxa = config$taxa, cfg = config,
     return(tibble::tibble())
   }
   ### for new alphanumeric speciesKey taxonomic keys from Catalog of Life
-  check_rgbif_version()
+  check_package_version('rgbif', '3.9')
 
   ### config$gbif_source = 'snapshot': one pass over the monthly AWS snapshot
   ### instead of the download API (see run_gbif_snapshot()). snapshot_parts limits
