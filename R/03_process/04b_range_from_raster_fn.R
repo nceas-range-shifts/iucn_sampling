@@ -71,12 +71,13 @@ build_range_from_raster <- function(taxon = "bird", cfg = config,
 
   ### Per-species totals (region + conservation areas), same outputs as polygons.
   cons_ids <- sf::st_read(cons_areas_hex_path(cfg), quiet = TRUE)$h3_index
-  tot <- wide |> dplyr::summarize(dplyr::across(-h3_index, ~sum(.x, na.rm = TRUE))) |>
-    tidyr::pivot_longer(dplyr::everything(), names_to = "species", values_to = "tot_range_cells")
-  in_cons <- wide |> dplyr::filter(h3_index %in% cons_ids) |>
-    dplyr::summarize(dplyr::across(-h3_index, ~sum(.x, na.rm = TRUE))) |>
-    tidyr::pivot_longer(dplyr::everything(), names_to = "species",
-                        values_to = "range_cells_in_cons_area")
+  ### colSums on the integer columns replaces across(sum) (no NAs here: filled above).
+  spp_cols <- setdiff(names(wide), "h3_index")
+  tot <- tibble::tibble(species = spp_cols,
+                        tot_range_cells = as.integer(colSums(wide[spp_cols])))
+  in_cons <- tibble::tibble(species = spp_cols,
+                            range_cells_in_cons_area = as.integer(
+                              colSums(wide[wide$h3_index %in% cons_ids, spp_cols])))
   out_dir <- ensure_dir(taxon_output_dir(taxon, cfg))
   readr::write_csv(tot, file.path(out_dir, "spp_cells_in_region.csv"))
   readr::write_csv(in_cons, file.path(out_dir, "spp_cells_in_cons_area.csv"))

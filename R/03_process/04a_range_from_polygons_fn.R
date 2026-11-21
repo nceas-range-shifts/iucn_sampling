@@ -278,29 +278,43 @@ build_range_from_polygons <- function(taxon, cfg = config, taxa_cfg = taxa_confi
     stop(glue("[{taxon}] no range cells were built for any species; see warnings above."),
          call. = FALSE)
   }
-  wide <- long |>
-    dplyr::mutate(presence = 1L) |>
-    dplyr::distinct() |>
-    tidyr::pivot_wider(names_from = species, values_from = presence, values_fill = 0L)
+  ### Wide 0/1 table by index matching (replaces pivot_wider + left_join + replace_na;
+  ### identical output, ~1.5x faster, linear in species; benchmark in logs/DECISIONS.md).
+  ### Row = position in the full grid (so every grid cell is represented), column =
+  ### species in first-appearance order. Cells outside the grid are dropped, as the
+  ### old left_join did.
+  spp <- unique(long$species)
+  n_cells <- nrow(hex_grid)
+  cell_i <- match(long$h3_index, hex_grid$h3_index)
+  spp_j <- match(long$species, spp)
+  in_grid <- !is.na(cell_i)
+  if (!all(in_grid)) {
+    .progress_msg(progress, "terse",
+                  glue("[{taxon}] {sum(!in_grid)} cell-species rows not in the hex grid; dropped."))
+  }
+  ### Unique (cell, species) pairs: a species spread over several layers can repeat a
+  ### cell, and tabulate() below would double-count it. Pair code is a double so it
+  ### stays exact past 2^31 for large species lists.
+  pair <- unique(cell_i[in_grid] + (spp_j[in_grid] - 1) * n_cells)
+  cell_i <- (pair - 1) %% n_cells + 1
+  spp_j <- (pair - 1) %/% n_cells + 1
 
-  ### Join onto the full grid so every cell is represented.
-  range_cells <- hex_grid |>
-    dplyr::left_join(wide, by = "h3_index") |>
-    dplyr::mutate(dplyr::across(-h3_index, ~tidyr::replace_na(., 0L)))
+  ### NOTE: dense n_cells x n_species integer matrix (~4 bytes/cell/species: ~11 GB at
+  ### 288k cells x 10k species). TODO: write the parquet in species chunks.
+  range_mat <- matrix(0L, nrow = n_cells, ncol = length(spp), dimnames = list(NULL, spp))
+  range_mat[cbind(cell_i, spp_j)] <- 1L
+  range_cells <- cbind(hex_grid["h3_index"], as.data.frame(range_mat, check.names = FALSE))
+  rm(range_mat)
 
   ensure_parent_dir(samp_cfg$range_cells_path)
   arrow::write_parquet(range_cells, samp_cfg$range_cells_path)
 
-  ### Per-species totals: whole region and within conservation areas.
-  tot <- range_cells |>
-    dplyr::summarize(dplyr::across(-h3_index, ~sum(.x, na.rm = TRUE))) |>
-    tidyr::pivot_longer(dplyr::everything(),
-                        names_to = "species", values_to = "tot_range_cells")
-  in_cons <- range_cells |>
-    dplyr::filter(h3_index %in% cons_ids) |>
-    dplyr::summarize(dplyr::across(-h3_index, ~sum(.x, na.rm = TRUE))) |>
-    tidyr::pivot_longer(dplyr::everything(),
-                        names_to = "species", values_to = "range_cells_in_cons_area")
+  ### Per-species totals: whole region and within conservation areas (straight from the
+  ### sparse index pairs; no dense summing).
+  in_cons_pair <- hex_grid$h3_index[cell_i] %in% cons_ids
+  tot <- tibble::tibble(species = spp, tot_range_cells = tabulate(spp_j, length(spp)))
+  in_cons <- tibble::tibble(species = spp,
+                            range_cells_in_cons_area = tabulate(spp_j[in_cons_pair], length(spp)))
 
   out_dir <- taxon_output_dir(taxon, cfg)
   ensure_dir(out_dir)

@@ -94,3 +94,12 @@
 **Edited:** `R/02_acquire/02_download_obis.R` — `run_obis_downloads()` rewritten (plan/cache, one combined S3 query split by taxon, per-taxon API fallback); new helpers `get_obis_aphia_ids()`, `prepare_obis_taxon()`, `obis_summary_row()`, `obis_error_row()`, `write_obis_taxon()`; `fetch_obis_aws(aphia_ids, species_names, ...)` signature changed; `get_obis_names()` drops species with no `aphia_id`; `obis_request_hash()` takes `aphia_ids`; `download_one_taxon_obis()` is now a wrapper over `run_obis_downloads()`; new `batch_size` argument. Result tibble gains `n_no_aphia`.
 **Backup:** pre-refactor version at `/tmp/pa-31947/7a73bc5a-0795-4d14-ab5c-f68180cfbf7c/02_download_obis.R.bak` (scratch, not in repo).
 **Note:** test outputs went to scratch only; `data/raw/obis/` not touched.
+
+## 2026-11-20 18:08 PST — OBIS download: match_by argument
+
+**Edited:** `R/02_acquire/02_download_obis.R` — new `match_by = c("both", "name", "id")` on `run_obis_downloads()` (default "both"), passed through `download_one_taxon_obis()`, `prepare_obis_taxon()`, `obis_request_hash()` and `fetch_obis_aws()`; header usage examples updated. API fallback warns when `match_by = "id"` (it queries by name only).
+
+## 2026-11-21 PST — Range table tail rewritten (matrix/tabulate)
+
+**Edited:** `R/03_process/04a_range_from_polygons_fn.R` (wide table, parquet frame and totals via `match` + matrix + `tabulate`); `R/03_process/04b_range_from_raster_fn.R` (totals via `colSums`). No files renamed or archived.
+**Note:** abalones outputs were regenerated during testing (values unchanged); backup of the previous outputs at `/tmp/pa-31947/b86c5e80-4aef-419d-94e0-a999dda9daa2/abalones_bak/` (scratch, not in repo). Range manifests are now stale for all polygon and raster taxa because the hashed range code changed: the next `run_build_ranges()` rebuilds them.

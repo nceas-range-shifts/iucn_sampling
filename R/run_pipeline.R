@@ -61,17 +61,17 @@ run_pipeline <- function(sample = FALSE) {
 
   message("== Stage 0: taxonomy ==")
       
-  build_species_crosswalk(force = config$force, progress = 'terse')
+  build_species_crosswalk(force = config$force)
 
   message("== Stage 1: acquire (API-gated) ==")
   system.time({run_gbif_downloads(force = config$force)})
     ### slow, but hopefully should run just as fast across all taxa
     ### as it does with just two taxa (single-shot query)
-    ### 1.5 hrs abs and mamms 11/19/26
+    ### 1.5 hrs abs and mamms 11/19/26; verified by Laurel 11/20
   system.time({
     ### Only taxa with an obis_dataset_path in taxa_config are fetched from OBIS.
     ### use_aws = TRUE attempts AWS S3 GeoParquet first (fast); falls back to API.
-    run_obis_downloads(force = TRUE, match_by = 'both')
+    run_obis_downloads(force = config$force)
   })
   
   message("== Stage 2: process ==")
@@ -85,7 +85,7 @@ run_pipeline <- function(sample = FALSE) {
 
   run_clean_occurrence() ### 5 min for mammals/abalne
 
-  system.time({run_build_ranges()})
+  system.time({run_build_ranges(force = TRUE)})
     ### using h3o instead of h3jsr: abalone quick; a few seconds
     ### Mammals (more spp, larger ranges): 5 minutes, way better than before
 
