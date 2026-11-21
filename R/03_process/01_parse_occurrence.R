@@ -86,6 +86,17 @@ occ_dedup_key <- function(df, digits = 4) {
   out
 }
 
+### eventDate is only used for the dedup key (first 10 chars), and GBIF (datetime)
+### and OBIS (text, may be an interval) disagree on type, so keep it as YYYY-MM-DD text.
+.as_event_date_chr <- function(df) {
+  for (n in names(df)[tolower(names(df)) == "eventdate"]) {
+    v <- df[[n]]
+    df[[n]] <- if (inherits(v, "POSIXt")) format(v, "%Y-%m-%d", tz = "UTC")
+               else substr(as.character(v), 1, 10)
+  }
+  df
+}
+
 ### Merge OBIS into GBIF for one species-year. Where an OBIS and a GBIF record
 ### share a key (see occ_dedup_key), only the GBIF record is kept. Duplicates
 ### within a single source are left for cleaning (cc_dupl) to handle.
@@ -93,16 +104,19 @@ occ_dedup_key <- function(df, digits = 4) {
 merge_obis_gbif <- function(gbif, obis, gbif_cols, digits = 4) {
   ### GBIF disabled in config: OBIS only.
   if (is.null(gbif)) {
-    out <- .align_obis(obis, gbif_cols, template = list())
+    # out <- .align_obis(obis, gbif_cols, template = list())
+    out <- .as_event_date_chr(.align_obis(obis, gbif_cols, template = list()))
     return(list(data = out, n_gbif = 0L, n_obis = nrow(out), n_dup = 0L))
   }
   gbif$record_id <- as.character(.col_ci(gbif, "gbifID"))
   gbif$source <- rep("gbif", nrow(gbif))
+  gbif <- .as_event_date_chr(gbif)
   n_obis <- if (is.null(obis)) 0L else nrow(obis)
   if (n_obis == 0) {
     return(list(data = gbif, n_gbif = nrow(gbif), n_obis = 0L, n_dup = 0L))
   }
-  obis <- .align_obis(obis, gbif_cols, gbif)
+  # obis <- .align_obis(obis, gbif_cols, gbif)
+  obis <- .as_event_date_chr(.align_obis(obis, gbif_cols, gbif))
   dup <- occ_dedup_key(obis, digits) %in% occ_dedup_key(gbif, digits)
   list(data = dplyr::bind_rows(gbif, obis[!dup, , drop = FALSE]),
        n_gbif = nrow(gbif), n_obis = n_obis, n_dup = sum(dup))
